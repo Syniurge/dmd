@@ -99,10 +99,12 @@ extern (C++) final class EnumDeclaration : ScopeDsymbol
                 EnumMember em = (*members)[i].isEnumMember();
                 em.ed = this;
                 //printf("add %s to scope %s\n", em.toChars(), scopesym.toChars());
-                em.addMember(sc, isAnonymous() ? scopesym : this);
+                if (isAnonymous())
+                    em.addMember(sc, scopesym);
             }
         }
-        added = true;
+        if (isAnonymous())
+            added = true;
     }
 
     override void setScope(Scope* sc)

@@ -40,6 +40,7 @@ import dmd.id;
 import dmd.identifier;
 import dmd.init;
 import dmd.lexer;
+import dmd.members;
 import dmd.mtype;
 import dmd.nspace;
 import dmd.opover;
@@ -154,6 +155,14 @@ enum PASS : int
     obj,            // toObjFile() run
 }
 
+enum SemState : uint
+{
+    Init,
+    In,
+    Defer,
+    Done,
+}
+
 // Search options
 enum : int
 {
@@ -186,6 +195,7 @@ extern (C++) class Dsymbol : RootObject
     const(char)* prettystring;  // cached value of toPrettyChars()
     bool errors;            // this symbol failed to pass semantic()
     PASS semanticRun;
+    uint semanticStateBits;     // TODO: remove semanticRun
 
     DeprecatedDeclaration depdecl;           // customized deprecation message
     UserAttributeDeclaration userAttribDecl;    // user defined attributes
@@ -193,6 +203,37 @@ extern (C++) class Dsymbol : RootObject
     // !=null means there's a ddoc unittest associated with this symbol
     // (only use this with ddoc)
     UnitTestDeclaration ddocUnittest;
+
+    private static extern (D) string semStates(string[] names)
+    {
+        import std.conv;
+
+        string result;
+        uint offset;
+        foreach(name; names)
+        {
+            uint mask = 0x3 << offset;
+
+            auto s_offset = offset.to!string;
+            auto s_mask = mask.to!string;
+
+            result ~= "    @property SemState " ~ name ~ "State()" ~
+                " { return cast(SemState) (semanticStateBits & " ~ s_mask ~ ") >>"  ~ s_offset ~ "; }\n";
+            result ~="    @property SemState " ~ name ~ "State(SemState value)" ~
+                " { semanticStateBits = (semanticStateBits & ~" ~ s_mask ~ ") | (value << " ~ s_offset ~ "); return value; }\n";
+
+            offset += 2;
+        }
+        return result;
+    }
+
+    mixin(semStates(["addMember", "symtab", "type", "initializer", "size", "baseClass", "tiargs", "semantic"]));
+
+    alias bodyState = initializerState;
+    alias aliasState = initializerState;
+    alias includeState = baseClassState;
+    alias fieldsState = tiargsState;
+    alias vtblState = tiargsState;
 
     final extern (D) this()
     {
@@ -607,6 +648,7 @@ extern (C++) class Dsymbol : RootObject
                 }
             }
         }
+        addMemberState = SemState.Done;
     }
 
     /*************************************
@@ -1247,6 +1289,12 @@ private:
     import dmd.root.array : BitArray;
     BitArray accessiblePackages, privateAccessiblePackages;// whitelists of accessible (imported) packages
 
+public: // FWDREF TODO make private?
+    uint nextMember;
+    uint membersNest;
+    size_t numDeferredMembers;
+    size_t lastDeferredMembers = ~cast(size_t)0;
+
 public:
     final extern (D) this()
     {
@@ -1274,6 +1322,9 @@ public:
     {
         //printf("%s.ScopeDsymbol::search(ident='%s', flags=x%x)\n", toChars(), ident.toChars(), flags);
         //if (strcmp(ident.toChars(),"c") == 0) *(char*)0=0;
+
+        if (symtabState != SemState.Done)
+            determineSymtab(this, _scope);
 
         // Look in symbols declared in this module
         if (symtab && !(flags & SearchImportsOnly))
@@ -1601,6 +1652,13 @@ public:
             }
         }
         return false;
+    }
+
+    /****************************************
+     */
+    Scope* newScope(Scope* sc)
+    {
+        return sc.push(this);
     }
 
     /***************************************

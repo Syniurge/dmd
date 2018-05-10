@@ -112,6 +112,8 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         Dsymbols* d = include(sc);
         if (d)
         {
@@ -341,6 +343,8 @@ extern (C++) class StorageClassDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         Dsymbols* d = include(sc);
         if (d)
         {
@@ -565,6 +569,8 @@ extern (C++) final class ProtDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         if (pkg_identifiers)
         {
             Dsymbol tmp;
@@ -984,6 +990,8 @@ extern (C++) final class StaticIfDeclaration : ConditionalDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         //printf("StaticIfDeclaration::addMember() '%s'\n", toChars());
         /* This is deferred until the condition evaluated later (by the include() call),
          * so that expressions in the condition can refer to declarations
@@ -1111,6 +1119,8 @@ extern (C++) final class StaticForeachDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         // used only for caching the enclosing symbol
         this.scopesym = sds;
     }
@@ -1194,6 +1204,8 @@ extern(C++) final class ForwardingAttribDeclaration: AttribDeclaration
      */
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         parent = sym.parent = sym.forward = sds;
         return super.addMember(sc, sym);
     }
@@ -1231,6 +1243,8 @@ extern (C++) final class CompileDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         //printf("CompileDeclaration::addMember(sc = %p, sds = %p, memnum = %d)\n", sc, sds, memnum);
         this.scopesym = sds;
     }

@@ -108,8 +108,11 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
      * Create a new scope from sc.
      * semantic, semantic2 and semantic3 will use this for aggregate members.
      */
-    Scope* newScope(Scope* sc)
+    override Scope* newScope(Scope* sc)
     {
+        if (!sc)
+            sc = _scope; // FWDREF FIXME
+
         auto sc2 = sc.push(this);
         sc2.stc &= STC.safe | STC.trusted | STC.system;
         sc2.parent = this;

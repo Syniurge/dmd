@@ -315,9 +315,15 @@ public:
     virtual Dsymbol *symtabInsert(Dsymbol *s);
     virtual Dsymbol *symtabLookup(Dsymbol *s, Identifier *id);
     bool hasStaticCtorOrDtor();
+    virtual Scope* newScope(Scope* sc);
 
     static size_t dim(Dsymbols *members);
     static Dsymbol *getNth(Dsymbols *members, size_t nth, size_t *pn = NULL);
+
+    uint32_t nextMember;
+    uint32_t membersNest;
+    size_t numDeferredMembers;
+    size_t lastDeferredMembers;
 
     ScopeDsymbol *isScopeDsymbol() { return this; }
     void accept(Visitor *v) { v->visit(this); }

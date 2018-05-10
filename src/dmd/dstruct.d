@@ -27,6 +27,7 @@ import dmd.func;
 import dmd.globals;
 import dmd.id;
 import dmd.identifier;
+import dmd.members;
 import dmd.mtype;
 import dmd.opover;
 import dmd.semantic3;
@@ -335,7 +336,7 @@ extern (C++) class StructDeclaration : AggregateDeclaration
     {
         //printf("%s.StructDeclaration::search('%s', flags = x%x)\n", toChars(), ident.toChars(), flags);
         if (_scope && !symtab)
-            dsymbolSemantic(this, _scope);
+            determineSymtab(this, _scope);
 
         if (!members || !symtab) // opaque or semantic() is not yet called
         {

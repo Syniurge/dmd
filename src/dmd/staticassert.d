@@ -45,6 +45,7 @@ extern (C++) final class StaticAssert : Dsymbol
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
         // we didn't add anything
+        addMemberState = SemState.Done;
     }
 
     override bool oneMember(Dsymbol* ps, Identifier ident)
