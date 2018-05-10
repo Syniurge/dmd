@@ -234,6 +234,8 @@ extern (C++) final class Import : Dsymbol
      */
     override void addMember(Scope* sc, ScopeDsymbol sd)
     {
+        addMemberState = SemState.Done;
+
         //printf("Import.addMember(this=%s, sd=%s, sc=%p)\n", toChars(), sd.toChars(), sc);
         if (names.dim == 0)
             return Dsymbol.addMember(sc, sd);

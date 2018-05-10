@@ -46,6 +46,7 @@ import dmd.init;
 import dmd.initsem;
 import dmd.hdrgen;
 import dmd.mars;
+import dmd.members;
 import dmd.mtype;
 import dmd.nogc;
 import dmd.nspace;
@@ -2013,9 +2014,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             return;
         }
 
-        if (!ed.symtab)
-            ed.symtab = new DsymbolTable();
-
         /* The separate, and distinct, cases are:
          *  1. enum { ... }
          *  2. enum : memtype { ... }
@@ -2092,15 +2090,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         sce = sce.startCTFE();
         sce.setNoFree(); // needed for getMaxMinValue()
 
-        /* Each enum member gets the sce scope
-         */
-        for (size_t i = 0; i < ed.members.dim; i++)
-        {
-            EnumMember em = (*ed.members)[i].isEnumMember();
-            if (em)
-                em._scope = sce;
-        }
-
         if (!ed.added)
         {
             /* addMember() is not called when the EnumDeclaration appears as a function statement,
@@ -2127,6 +2116,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             else
             {
                 // Otherwise enum members are in the EnumDeclaration's symbol table
+                ed.determineSymtab(sc);
                 scopesym = ed;
             }
 
@@ -2136,9 +2126,19 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 if (em)
                 {
                     em.ed = ed;
-                    em.addMember(sc, scopesym);
+                    if (ed.isAnonymous()) // FWDREF FIXME this is contrived for now, but meant to minimize the needed changes
+                        em.addMember(sc, scopesym);
                 }
             }
+        }
+
+        /* Each enum member gets the sce scope
+         */
+        for (size_t i = 0; i < ed.members.dim; i++)
+        {
+            EnumMember em = (*ed.members)[i].isEnumMember();
+            if (em)
+                em._scope = sce;
         }
 
         for (size_t i = 0; i < ed.members.dim; i++)
@@ -4086,7 +4086,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         //printf("+StructDeclaration::semantic(this=%p, '%s', sizeok = %d)\n", this, toPrettyChars(), sizeok);
         Scope* scx = null;
-        if (sd._scope)
+        if (sd._scope) // FWDREF FIXME
         {
             sc = sd._scope;
             scx = sd._scope; // save so we don't make redundant copies
@@ -4139,35 +4139,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             sd.semanticRun = PASS.semanticdone;
             return;
         }
-        if (!sd.symtab)
-        {
-            sd.symtab = new DsymbolTable();
 
-            for (size_t i = 0; i < sd.members.dim; i++)
-            {
-                auto s = (*sd.members)[i];
-                //printf("adding member '%s' to '%s'\n", s.toChars(), this.toChars());
-                s.addMember(sc, sd);
-            }
-        }
+        sd.determineSymtab(sc);
+        assert(sd.symtabState == SemState.Done);
 
         auto sc2 = sd.newScope(sc);
-
-        /* Set scope so if there are forward references, we still might be able to
-         * resolve individual members like enums.
-         */
-        for (size_t i = 0; i < sd.members.dim; i++)
-        {
-            auto s = (*sd.members)[i];
-            //printf("struct: setScope %s %s\n", s.kind(), s.toChars());
-            s.setScope(sc2);
-        }
-
-        for (size_t i = 0; i < sd.members.dim; i++)
-        {
-            auto s = (*sd.members)[i];
-            s.importAll(sc2);
-        }
 
         for (size_t i = 0; i < sd.members.dim; i++)
         {
@@ -4370,269 +4346,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         }
         cldec.semanticRun = PASS.semantic;
 
-        if (cldec.baseok < Baseok.done)
-        {
-            /* https://issues.dlang.org/show_bug.cgi?id=12078
-             * https://issues.dlang.org/show_bug.cgi?id=12143
-             * https://issues.dlang.org/show_bug.cgi?id=15733
-             * While resolving base classes and interfaces, a base may refer
-             * the member of this derived class. In that time, if all bases of
-             * this class can  be determined, we can go forward the semantc process
-             * beyond the Lancestorsdone. To do the recursive semantic analysis,
-             * temporarily set and unset `_scope` around exp().
-             */
-            T resolveBase(T)(lazy T exp)
-            {
-                if (!scx)
-                {
-                    scx = sc.copy();
-                    scx.setNoFree();
-                }
-                static if (!is(T == void))
-                {
-                    cldec._scope = scx;
-                    auto r = exp();
-                    cldec._scope = null;
-                    return r;
-                }
-                else
-                {
-                    cldec._scope = scx;
-                    exp();
-                    cldec._scope = null;
-                }
-            }
+        determineBaseClasses(cldec, sc, scx);
 
-            cldec.baseok = Baseok.start;
-
-            // Expand any tuples in baseclasses[]
-            for (size_t i = 0; i < cldec.baseclasses.dim;)
-            {
-                auto b = (*cldec.baseclasses)[i];
-                b.type = resolveBase(b.type.typeSemantic(cldec.loc, sc));
-
-                Type tb = b.type.toBasetype();
-                if (tb.ty == Ttuple)
-                {
-                    TypeTuple tup = cast(TypeTuple)tb;
-                    cldec.baseclasses.remove(i);
-                    size_t dim = Parameter.dim(tup.arguments);
-                    for (size_t j = 0; j < dim; j++)
-                    {
-                        Parameter arg = Parameter.getNth(tup.arguments, j);
-                        b = new BaseClass(arg.type);
-                        cldec.baseclasses.insert(i + j, b);
-                    }
-                }
-                else
-                    i++;
-            }
-
-            if (cldec.baseok >= Baseok.done)
-            {
-                //printf("%s already semantic analyzed, semanticRun = %d\n", toChars(), semanticRun);
-                if (cldec.semanticRun >= PASS.semanticdone)
-                    return;
-                goto Lancestorsdone;
-            }
-
-            // See if there's a base class as first in baseclasses[]
-            if (cldec.baseclasses.dim)
-            {
-                BaseClass* b = (*cldec.baseclasses)[0];
-                Type tb = b.type.toBasetype();
-                TypeClass tc = (tb.ty == Tclass) ? cast(TypeClass)tb : null;
-                if (!tc)
-                {
-                    if (b.type != Type.terror)
-                        cldec.error("base type must be `class` or `interface`, not `%s`", b.type.toChars());
-                    cldec.baseclasses.remove(0);
-                    goto L7;
-                }
-                if (tc.sym.isDeprecated())
-                {
-                    if (!cldec.isDeprecated())
-                    {
-                        // Deriving from deprecated class makes this one deprecated too
-                        cldec.isdeprecated = true;
-                        tc.checkDeprecated(cldec.loc, sc);
-                    }
-                }
-                if (tc.sym.isInterfaceDeclaration())
-                    goto L7;
-
-                for (ClassDeclaration cdb = tc.sym; cdb; cdb = cdb.baseClass)
-                {
-                    if (cdb == cldec)
-                    {
-                        cldec.error("circular inheritance");
-                        cldec.baseclasses.remove(0);
-                        goto L7;
-                    }
-                }
-
-                /* https://issues.dlang.org/show_bug.cgi?id=11034
-                 * Class inheritance hierarchy
-                 * and instance size of each classes are orthogonal information.
-                 * Therefore, even if tc.sym.sizeof == Sizeok.none,
-                 * we need to set baseClass field for class covariance check.
-                 */
-                cldec.baseClass = tc.sym;
-                b.sym = cldec.baseClass;
-
-                if (tc.sym.baseok < Baseok.done)
-                    resolveBase(tc.sym.dsymbolSemantic(null)); // Try to resolve forward reference
-                if (tc.sym.baseok < Baseok.done)
-                {
-                    //printf("\ttry later, forward reference of base class %s\n", tc.sym.toChars());
-                    if (tc.sym._scope)
-                        tc.sym._scope._module.addDeferredSemantic(tc.sym);
-                    cldec.baseok = Baseok.none;
-                }
-            L7:
-            }
-
-            // Treat the remaining entries in baseclasses as interfaces
-            // Check for errors, handle forward references
-            bool multiClassError = false;
-
-            for (size_t i = (cldec.baseClass ? 1 : 0); i < cldec.baseclasses.dim;)
-            {
-                BaseClass* b = (*cldec.baseclasses)[i];
-                Type tb = b.type.toBasetype();
-                TypeClass tc = (tb.ty == Tclass) ? cast(TypeClass)tb : null;
-                if (!tc || !tc.sym.isInterfaceDeclaration())
-                {
-                    // It's a class
-                    if (tc)
-                    {
-                        if (!multiClassError)
-                        {
-                            error(cldec.loc,"`%s`: multiple class inheritance is not supported." ~
-                                  " Use multiple interface inheritance and/or composition.", cldec.toPrettyChars());
-                            multiClassError = true;
-                        }
-
-                        if (tc.sym.fields.dim)
-                            errorSupplemental(cldec.loc,"`%s` has fields, consider making it a member of `%s`",
-                                              b.type.toChars(), cldec.type.toChars());
-                        else
-                            errorSupplemental(cldec.loc,"`%s` has no fields, consider making it an `interface`",
-                                              b.type.toChars());
-                    }
-                    // It's something else: e.g. `int` in `class Foo : Bar, int { ... }`
-                    else if (b.type != Type.terror)
-                    {
-                        error(cldec.loc,"`%s`: base type must be `interface`, not `%s`",
-                              cldec.toPrettyChars(), b.type.toChars());
-                    }
-                    cldec.baseclasses.remove(i);
-                    continue;
-                }
-
-                // Check for duplicate interfaces
-                for (size_t j = (cldec.baseClass ? 1 : 0); j < i; j++)
-                {
-                    BaseClass* b2 = (*cldec.baseclasses)[j];
-                    if (b2.sym == tc.sym)
-                    {
-                        cldec.error("inherits from duplicate interface `%s`", b2.sym.toChars());
-                        cldec.baseclasses.remove(i);
-                        continue;
-                    }
-                }
-                if (tc.sym.isDeprecated())
-                {
-                    if (!cldec.isDeprecated())
-                    {
-                        // Deriving from deprecated class makes this one deprecated too
-                        cldec.isdeprecated = true;
-                        tc.checkDeprecated(cldec.loc, sc);
-                    }
-                }
-
-                b.sym = tc.sym;
-
-                if (tc.sym.baseok < Baseok.done)
-                    resolveBase(tc.sym.dsymbolSemantic(null)); // Try to resolve forward reference
-                if (tc.sym.baseok < Baseok.done)
-                {
-                    //printf("\ttry later, forward reference of base %s\n", tc.sym.toChars());
-                    if (tc.sym._scope)
-                        tc.sym._scope._module.addDeferredSemantic(tc.sym);
-                    cldec.baseok = Baseok.none;
-                }
-                i++;
-            }
-            if (cldec.baseok == Baseok.none)
-            {
-                // Forward referencee of one or more bases, try again later
-                cldec._scope = scx ? scx : sc.copy();
-                cldec._scope.setNoFree();
-                cldec._scope._module.addDeferredSemantic(cldec);
-                //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
-                return;
-            }
-            cldec.baseok = Baseok.done;
-
-            // If no base class, and this is not an Object, use Object as base class
-            if (!cldec.baseClass && cldec.ident != Id.Object && cldec.object && !cldec.classKind == ClassKind.cpp)
-            {
-                void badObjectDotD()
-                {
-                    cldec.error("missing or corrupt object.d");
-                    fatal();
-                }
-
-                if (!cldec.object || cldec.object.errors)
-                    badObjectDotD();
-
-                Type t = cldec.object.type;
-                t = t.typeSemantic(cldec.loc, sc).toBasetype();
-                if (t.ty == Terror)
-                    badObjectDotD();
-                assert(t.ty == Tclass);
-                TypeClass tc = cast(TypeClass)t;
-
-                auto b = new BaseClass(tc);
-                cldec.baseclasses.shift(b);
-
-                cldec.baseClass = tc.sym;
-                assert(!cldec.baseClass.isInterfaceDeclaration());
-                b.sym = cldec.baseClass;
-            }
-            if (cldec.baseClass)
-            {
-                if (cldec.baseClass.storage_class & STC.final_)
-                    cldec.error("cannot inherit from class `%s` because it is `final`", cldec.baseClass.toChars());
-
-                // Inherit properties from base class
-                if (cldec.baseClass.isCOMclass())
-                    cldec.com = true;
-                if (cldec.baseClass.isCPPclass())
-                    cldec.classKind = ClassKind.cpp;
-                if (cldec.baseClass.stack)
-                    cldec.stack = true;
-                cldec.enclosing = cldec.baseClass.enclosing;
-                cldec.storage_class |= cldec.baseClass.storage_class & STC.TYPECTOR;
-            }
-
-            cldec.interfaces = cldec.baseclasses.tdata()[(cldec.baseClass ? 1 : 0) .. cldec.baseclasses.dim];
-            foreach (b; cldec.interfaces)
-            {
-                // If this is an interface, and it derives from a COM interface,
-                // then this is a COM interface too.
-                if (b.sym.isCOMinterface())
-                    cldec.com = true;
-                if (cldec.classKind == ClassKind.cpp && !b.sym.isCPPinterface())
-                {
-                    error(cldec.loc, "C++ class `%s` cannot implement D interface `%s`",
-                        cldec.toPrettyChars(), b.sym.toPrettyChars());
-                }
-            }
-            interfaceSemantic(cldec);
-        }
-    Lancestorsdone:
         //printf("\tClassDeclaration.dsymbolSemantic(%s) baseok = %d\n", toChars(), baseok);
 
         if (!cldec.members) // if opaque declaration
@@ -4640,37 +4355,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             cldec.semanticRun = PASS.semanticdone;
             return;
         }
-        if (!cldec.symtab)
-        {
-            cldec.symtab = new DsymbolTable();
-
-            /* https://issues.dlang.org/show_bug.cgi?id=12152
-             * The semantic analysis of base classes should be finished
-             * before the members semantic analysis of this class, in order to determine
-             * vtbl in this class. However if a base class refers the member of this class,
-             * it can be resolved as a normal forward reference.
-             * Call addMember() and setScope() to make this class members visible from the base classes.
-             */
-            for (size_t i = 0; i < cldec.members.dim; i++)
-            {
-                auto s = (*cldec.members)[i];
-                s.addMember(sc, cldec);
-            }
-
-            auto sc2 = cldec.newScope(sc);
-
-            /* Set scope so if there are forward references, we still might be able to
-             * resolve individual members like enums.
-             */
-            for (size_t i = 0; i < cldec.members.dim; i++)
-            {
-                auto s = (*cldec.members)[i];
-                //printf("[%d] setScope %s %s, sc2 = %p\n", i, s.kind(), s.toChars(), sc2);
-                s.setScope(sc2);
-            }
-
-            sc2.pop();
-        }
+        cldec.determineSymtab(sc);
+        assert(cldec.symtabState == SemState.Done);
 
         for (size_t i = 0; i < cldec.baseclasses.dim; i++)
         {
@@ -5126,8 +4812,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             idec.semanticRun = PASS.semanticdone;
             return;
         }
-        if (!idec.symtab)
-            idec.symtab = new DsymbolTable();
 
         for (size_t i = 0; i < idec.baseclasses.dim; i++)
         {
@@ -5186,23 +4870,9 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             }
         }
 
-        for (size_t i = 0; i < idec.members.dim; i++)
-        {
-            Dsymbol s = (*idec.members)[i];
-            s.addMember(sc, idec);
-        }
+        idec.determineSymtab(sc);
 
         auto sc2 = idec.newScope(sc);
-
-        /* Set scope so if there are forward references, we still might be able to
-         * resolve individual members like enums.
-         */
-        for (size_t i = 0; i < idec.members.dim; i++)
-        {
-            Dsymbol s = (*idec.members)[i];
-            //printf("setScope %s %s\n", s.kind(), s.toChars());
-            s.setScope(sc2);
-        }
 
         for (size_t i = 0; i < idec.members.dim; i++)
         {

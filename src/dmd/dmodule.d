@@ -30,6 +30,7 @@ import dmd.expression;
 import dmd.globals;
 import dmd.id;
 import dmd.identifier;
+import dmd.members;
 import dmd.parse;
 import dmd.root.file;
 import dmd.root.filename;
@@ -1009,11 +1010,22 @@ extern (C++) final class Module : Package
         return this;
     }
 
+    override Scope* newScope(Scope* sc)
+    {
+        /* Note that modules get their own scope, from scratch.
+         * This is so regardless of where in the syntax a module
+         * gets imported, it is unaffected by context.
+         */
+        if (!_scope)
+           setScope(Scope.createGlobal(this)); // create root scope
+        return _scope;
+    }
+
     override void importAll(Scope* prevsc)
     {
         //printf("+Module::importAll(this = %p, '%s'): parent = %p\n", this, toChars(), parent);
         if (_scope)
-            return; // already done
+            return; // already done // FWDREF FIXME this is dangerous stuff and should go
         if (isDocFile)
         {
             error("is a Ddoc file, cannot import it");
@@ -1026,50 +1038,14 @@ extern (C++) final class Module : Package
             else
                 md.msg.error("string expected, not '%s'", md.msg.toChars());
         }
-        /* Note that modules get their own scope, from scratch.
-         * This is so regardless of where in the syntax a module
-         * gets imported, it is unaffected by context.
-         * Ignore prevsc.
-         */
-        Scope* sc = Scope.createGlobal(this); // create root scope
-        // Add import of "object", even for the "object" module.
-        // If it isn't there, some compiler rewrites, like
-        //    classinst == classinst -> .object.opEquals(classinst, classinst)
-        // would fail inside object.d.
-        if (members.dim == 0 || (*members)[0].ident != Id.object)
-        {
-            auto im = new Import(Loc.initial, null, Id.object, null, 0);
-            members.shift(im);
-        }
-        if (!symtab)
-        {
-            // Add all symbols into module's symbol table
-            symtab = new DsymbolTable();
-            for (size_t i = 0; i < members.dim; i++)
-            {
-                Dsymbol s = (*members)[i];
-                s.addMember(sc, sc.scopesym);
-            }
-        }
-        // anything else should be run after addMember, so version/debug symbols are defined
-        /* Set scope for the symbols so that if we forward reference
-         * a symbol, it can possibly be resolved on the spot.
-         * If this works out well, it can be extended to all modules
-         * before any semantic() on any of them.
-         */
-        setScope(sc); // remember module scope for semantic
-        for (size_t i = 0; i < members.dim; i++)
+
+        determineSymtab(this, prevsc);
+
+        for (size_t i = 0; i < members.dim; i++) // FWDREF FIXME should go
         {
             Dsymbol s = (*members)[i];
-            s.setScope(sc);
+            s.importAll(_scope);
         }
-        for (size_t i = 0; i < members.dim; i++)
-        {
-            Dsymbol s = (*members)[i];
-            s.importAll(sc);
-        }
-        sc = sc.pop();
-        sc.pop(); // 2 pops because Scope::createGlobal() created 2
     }
 
     /**********************************

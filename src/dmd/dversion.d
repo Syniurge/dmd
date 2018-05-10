@@ -66,6 +66,8 @@ extern (C++) final class DebugSymbol : Dsymbol
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         //printf("DebugSymbol::addMember('%s') %s\n", sds.toChars(), toChars());
         Module m = sds.isModule();
         // Do not add the member to the symbol table,
@@ -155,6 +157,8 @@ extern (C++) final class VersionSymbol : Dsymbol
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
+        addMemberState = SemState.Done;
+
         //printf("VersionSymbol::addMember('%s') %s\n", sds.toChars(), toChars());
         Module m = sds.isModule();
         // Do not add the member to the symbol table,
