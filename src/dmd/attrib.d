@@ -123,6 +123,7 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
                 Dsymbol s = (*d)[i];
                 //printf("\taddMember %s to %s\n", s.toChars(), sds.toChars());
                 s.addMember(sc2, sds);
+                s.setScope(sc2); // FIXME: should go into addMember
             }
             if (sc2 != sc)
                 sc2.pop();
@@ -933,7 +934,6 @@ extern (C++) class ConditionalDeclaration : AttribDeclaration
  */
 extern (C++) final class StaticIfDeclaration : ConditionalDeclaration
 {
-    ScopeDsymbol scopesym;
     bool addisdone;
 
     extern (D) this(Condition condition, Dsymbols* decl, Dsymbols* elsedecl)
@@ -946,65 +946,6 @@ extern (C++) final class StaticIfDeclaration : ConditionalDeclaration
     {
         assert(!s);
         return new StaticIfDeclaration(condition.syntaxCopy(), Dsymbol.arraySyntaxCopy(decl), Dsymbol.arraySyntaxCopy(elsedecl));
-    }
-
-    /****************************************
-     * Different from other AttribDeclaration subclasses, include() call requires
-     * the completion of addMember and setScope phases.
-     */
-    override Dsymbols* include(Scope* sc)
-    {
-        //printf("StaticIfDeclaration::include(sc = %p) scope = %p\n", sc, scope);
-
-        if (errors)
-            return null;
-
-        if (condition.inc == 0)
-        {
-            assert(scopesym); // addMember is already done
-            assert(_scope); // setScope is already done
-            Dsymbols* d = ConditionalDeclaration.include(_scope);
-            if (d && !addisdone)
-            {
-                // Add members lazily.
-                for (size_t i = 0; i < d.dim; i++)
-                {
-                    Dsymbol s = (*d)[i];
-                    s.addMember(_scope, scopesym);
-                }
-                // Set the member scopes lazily.
-                for (size_t i = 0; i < d.dim; i++)
-                {
-                    Dsymbol s = (*d)[i];
-                    s.setScope(_scope);
-                }
-                addisdone = true;
-            }
-            return d;
-        }
-        else
-        {
-            return ConditionalDeclaration.include(sc);
-        }
-    }
-
-    override void addMember(Scope* sc, ScopeDsymbol sds)
-    {
-        addMemberState = SemState.Done;
-
-        //printf("StaticIfDeclaration::addMember() '%s'\n", toChars());
-        /* This is deferred until the condition evaluated later (by the include() call),
-         * so that expressions in the condition can refer to declarations
-         * in the same scope, such as:
-         *
-         * template Foo(int i)
-         * {
-         *     const int j = i + 1;
-         *     static if (j == 3)
-         *         const int k;
-         * }
-         */
-        this.scopesym = sds;
     }
 
     override void setScope(Scope* sc)
