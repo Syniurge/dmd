@@ -1166,7 +1166,7 @@ extern (C++) void determineBaseClasses(ClassDeclaration cldec, Scope* sc, Scope*
 {
     if (cldec.baseClassState == SemState.Done)
         return;
-    assert(cldec.baseClassState != SemState.In);
+//     assert(cldec.baseClassState != SemState.In);
 
     cldec.baseClassState = SemState.In;
     void defer() { cldec.baseClassState = SemState.Defer; }

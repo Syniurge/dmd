@@ -4348,6 +4348,9 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         determineBaseClasses(cldec, sc, scx);
 
+        if (cldec.semanticRun >= PASS.semanticdone || cldec.baseok == Baseok.none) // FWDREF FIXME temporary?
+            return;
+
         //printf("\tClassDeclaration.dsymbolSemantic(%s) baseok = %d\n", toChars(), baseok);
 
         if (!cldec.members) // if opaque declaration
