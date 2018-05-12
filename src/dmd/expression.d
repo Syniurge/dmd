@@ -239,6 +239,9 @@ Lagain:
     }
     if (auto v = s.isVarDeclaration())
     {
+        if (v._scope)
+            v.dsymbolSemantic(null); // FWDREF FIXME: we probably don't need all of it
+
         //printf("Identifier '%s' is a variable, type '%s'\n", s.toChars(), v.type.toChars());
         if (!v.type ||                  // during variable type inference
             !v.type.deco && v.inuse)    // during variable type semantic
