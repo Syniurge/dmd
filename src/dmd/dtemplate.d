@@ -6032,6 +6032,51 @@ extern (C++) class TemplateInstance : ScopeDsymbol
         return ti;
     }
 
+    override Scope* newScope(Scope* prevsc)
+    {
+        assert(tempdecl && tempdecl.isTemplateDeclaration());
+        assert(tempdecl.semanticState == SemState.Done);
+
+        static if (LOG)
+        {
+            printf("\tcreate scope for template parameters '%s'\n", toChars());
+        }
+
+        // Create our own scope for the template parameters
+        Scope* sc = tempdecl._scope;
+        bool declareParams = argsym is null;
+
+        if (declareParams)
+        {
+            argsym = new ScopeDsymbol();
+            argsym.parent = sc.parent;
+        }
+
+        sc = sc.push(argsym);
+        sc.tinst = this;
+        sc.minst = minst;
+        //sc.stc = 0;
+
+        if (declareParams)
+        {
+            // Declare each template parameter as an alias for the argument type
+            Scope* paramscope = sc.push();
+            paramscope.stc = 0;
+            paramscope.protection = Prot(Prot.Kind.public_); // https://issues.dlang.org/show_bug.cgi?id=14169
+                                                    // template parameters should be public
+            declareParameters(paramscope);
+            paramscope.pop();
+        }
+
+        Scope* sc2 = _scope.push(this);
+        //printf("enclosing = %d, sc.parent = %s\n", enclosing, sc.parent.toChars());
+        sc2.parent = this;
+        sc2.tinst = this;
+        sc2.minst = minst;
+
+        return sc2;
+    }
+
     // resolve real symbol
     override final Dsymbol toAlias()
     {

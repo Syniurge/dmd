@@ -176,14 +176,7 @@ public:
 class StaticIfDeclaration : public ConditionalDeclaration
 {
 public:
-    ScopeDsymbol *scopesym;
-    bool addisdone;
-
     Dsymbol *syntaxCopy(Dsymbol *s);
-    Dsymbols *include(Scope *sc);
-    void addMember(Scope *sc, ScopeDsymbol *sds);
-    void setScope(Scope *sc);
-    void importAll(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
