@@ -32,6 +32,7 @@ import dmd.globals;
 import dmd.hdrgen;
 import dmd.id;
 import dmd.identifier;
+import dmd.members;
 import dmd.mtype;
 import dmd.nogc;
 import dmd.root.array;
@@ -1385,8 +1386,8 @@ extern (C++) Expression semanticTraits(TraitsExp e, Scope* sc)
         auto cd = sds.isClassDeclaration();
         if (cd && e.ident == Id.allMembers)
         {
-            if (cd.semanticRun < PASS.semanticdone)
-                cd.dsymbolSemantic(null); // https://issues.dlang.org/show_bug.cgi?id=13668
+            if (cd.symtabState != SemState.Done)
+                cd.determineSymtab(cd._scope); // https://issues.dlang.org/show_bug.cgi?id=13668
                                    // Try to resolve forward reference
 
             void pushBaseMembersDg(ClassDeclaration cd)
