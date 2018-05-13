@@ -955,11 +955,6 @@ extern (C++) final class StaticIfDeclaration : ConditionalDeclaration
         Dsymbol.setScope(sc);
     }
 
-    override void importAll(Scope* sc)
-    {
-        // do not evaluate condition before semantic pass
-    }
-
     override const(char)* kind() const
     {
         return "static if";
