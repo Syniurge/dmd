@@ -272,6 +272,7 @@ extern (C++) final class Import : Dsymbol
                 ad.setScope(sc);
             sc = sc.pop();
         }
+        importAll(sc); // FWDREF FIXME this also calls mod.importAll() which is overkill
     }
 
     override Dsymbol search(const ref Loc loc, Identifier ident, int flags = SearchLocalsOnly)
@@ -279,9 +280,14 @@ extern (C++) final class Import : Dsymbol
         //printf("%s.Import.search(ident = '%s', flags = x%x)\n", toChars(), ident.toChars(), flags);
         if (!pkg)
         {
+            if (_scope)
+                importAll(_scope); // FWDREF FIXME will probably become useful when ImportStatement.semantic will call setScope
+            else
+            {
             load(null);
             mod.importAll(null);
             mod.dsymbolSemantic(null);
+            }
         }
         // Forward it to the package/module
         return pkg.search(loc, ident, flags);
