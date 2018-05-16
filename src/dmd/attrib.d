@@ -364,6 +364,7 @@ extern (C++) class StorageClassDeclaration : AttribDeclaration
                     }
                 }
                 s.addMember(sc2, sds);
+                s.setScope(sc2); // FIXME: should go into addMember
             }
             if (sc2 != sc)
                 sc2.pop();
