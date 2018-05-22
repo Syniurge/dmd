@@ -6032,10 +6032,16 @@ extern (C++) class TemplateInstance : ScopeDsymbol
         return ti;
     }
 
+    // FWDREF FIXME temporary, this is not ideal
+    TemplateInstance errinst;
+    TemplateInstance tempdecl_instance_idx;
+    Dsymbols* target_symbol_list;
+    size_t target_symbol_list_idx;
+
     override Scope* newScope(Scope* prevsc)
     {
         assert(tempdecl && tempdecl.isTemplateDeclaration());
-        assert(tempdecl.semanticState == SemState.Done);
+        assert(tempdecl.semanticRun == PASS.semanticdone);
 
         static if (LOG)
         {
@@ -6043,24 +6049,24 @@ extern (C++) class TemplateInstance : ScopeDsymbol
         }
 
         // Create our own scope for the template parameters
-        Scope* sc = tempdecl._scope;
+        Scope* _scope = tempdecl._scope;
         bool declareParams = argsym is null;
 
         if (declareParams)
         {
             argsym = new ScopeDsymbol();
-            argsym.parent = sc.parent;
+            argsym.parent = _scope.parent;
         }
 
-        sc = sc.push(argsym);
-        sc.tinst = this;
-        sc.minst = minst;
-        //sc.stc = 0;
+        _scope = _scope.push(argsym);
+        _scope.tinst = this;
+        _scope.minst = minst;
+        //_scope.stc = 0;
 
         if (declareParams)
         {
             // Declare each template parameter as an alias for the argument type
-            Scope* paramscope = sc.push();
+            Scope* paramscope = _scope.push();
             paramscope.stc = 0;
             paramscope.protection = Prot(Prot.Kind.public_); // https://issues.dlang.org/show_bug.cgi?id=14169
                                                     // template parameters should be public
