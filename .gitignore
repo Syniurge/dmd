@@ -42,3 +42,7 @@ src/optabgen.dSYM/
 # GCov
 *.gcno
 *.gcda
+
+\.kdev4/
+*.kdev4
+.gitignore

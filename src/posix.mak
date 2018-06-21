@@ -240,7 +240,7 @@ endif
 # Append different flags for debugging, profiling and release.
 ifdef ENABLE_DEBUG
 CXXFLAGS += -g -g3 -DDEBUG=1 -DUNITTEST
-override DFLAGS += -g -debug
+override DFLAGS += -g -debug -link-debuglib
 endif
 ifdef ENABLE_RELEASE
 CXXFLAGS += -O2

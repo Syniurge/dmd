@@ -193,11 +193,11 @@ private int tryMain(size_t argc, const(char)** argv)
     Strings files;
     Strings libmodules;
     global._init();
-    debug
-    {
-        printf("DMD %s DEBUG\n", global._version);
-        fflush(stdout); // avoid interleaving with stderr output when redirecting
-    }
+//     debug
+//     {
+//         printf("DMD %s DEBUG\n", global._version);
+//         fflush(stdout); // avoid interleaving with stderr output when redirecting
+//     }
     // Check for malformed input
     if (argc < 1 || !argv)
     {
