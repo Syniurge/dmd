@@ -313,11 +313,12 @@ struct Scope
      *  ident = name to look up
      *  pscopesym = if supplied and name is found, set to scope that ident was found in
      *  flags = modify search based on flags
+     *  confident = if supplied, set to whether the result may not be correct because of a scope whose members haven't been fully determined yet
      *
      * Returns:
      *  symbol if found, null if not
      */
-    extern (C++) Dsymbol search(const ref Loc loc, Identifier ident, Dsymbol* pscopesym, int flags = IgnoreNone)
+    extern (C++) Dsymbol search(const ref Loc loc, Identifier ident, Dsymbol* pscopesym, int flags = IgnoreNone, bool* confident = null)
     {
         version (LOGSEARCH)
         {
@@ -339,6 +340,9 @@ struct Scope
 
         // This function is called only for unqualified lookup
         assert(!(flags & (SearchLocalsOnly | SearchImportsOnly)));
+
+        if (confident)
+            *confident = true;
 
         /* If ident is "start at module scope", only look at module scope
          */
@@ -386,6 +390,8 @@ struct Scope
                         *pscopesym = sc.scopesym;
                     return s;
                 }
+                else if (confident && (sc.scopesym.symtabState == SemState.Defer || sc.scopesym.membersNest >= 1))
+                    *confident = false;         // even if a symbol is found in an enclosing scope, the right symbol might be added later to this scope (FWDREF NOTE: if this is a too heavy performance drain to defer many operations because of this, it might be possible to anticipate which identifiers a ScopeDsymbol will introduce when determineMembers is done in most cases except for mixins)
                 // Stop when we hit a module, but keep going if that is not just under the global scope
                 if (sc.scopesym.isModule() && !(sc.enclosing && !sc.enclosing.enclosing))
                     break;
