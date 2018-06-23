@@ -324,6 +324,7 @@ enum ENUMTY : int
     Twchar,
     Tdchar,
     Terror,
+    Tdefer,
     Tinstance,
     Ttypeof,
     Ttuple,
@@ -372,6 +373,7 @@ alias Tchar = ENUMTY.Tchar;
 alias Twchar = ENUMTY.Twchar;
 alias Tdchar = ENUMTY.Tdchar;
 alias Terror = ENUMTY.Terror;
+alias Tdefer = ENUMTY.Tdefer;
 alias Tinstance = ENUMTY.Tinstance;
 alias Ttypeof = ENUMTY.Ttypeof;
 alias Ttuple = ENUMTY.Ttuple;
@@ -461,6 +463,7 @@ extern (C++) abstract class Type : RootObject
     extern (C++) static __gshared Type tdstring;    // immutable(dchar)[]
     extern (C++) static __gshared Type tvalist;     // va_list alias
     extern (C++) static __gshared Type terror;      // for error recovery
+    extern (C++) static __gshared Type tdefer;      // for deferring
     extern (C++) static __gshared Type tnull;       // for null type
 
     extern (C++) static __gshared Type tsize_t;     // matches size_t alias
@@ -857,16 +860,18 @@ extern (C++) abstract class Type : RootObject
             Tchar,
             Twchar,
             Tdchar,
-            Terror
+            Terror,
+            Tdefer
         ];
 
-        for (size_t i = 0; basetab[i] != Terror; i++)
+        for (size_t i = 0; basetab[i] != Terror && basetab[i] != Tdefer; i++)
         {
             Type t = new TypeBasic(basetab[i]);
             t = t.merge();
             basic[basetab[i]] = t;
         }
         basic[Terror] = new TypeError();
+        basic[Tdefer] = new TypeDefer();
 
         tvoid = basic[Tvoid];
         tint8 = basic[Tint8];
@@ -898,6 +903,8 @@ extern (C++) abstract class Type : RootObject
 
         tshiftcnt = tint32;
         terror = basic[Terror];
+        tdefer = basic[Tdefer];
+        DeferExp.deferexp = new DeferExp; // FWDREF FIXME/NOTE: relies on tdefer, so where should this go?
         tnull = basic[Tnull];
         tnull = new TypeNull();
         tnull.deco = tnull.merge().deco;
@@ -2771,6 +2778,42 @@ extern (C++) final class TypeError : Type
     override Expression defaultInitLiteral(const ref Loc loc)
     {
         return new ErrorExp();
+    }
+
+    override void accept(Visitor v)
+    {
+        v.visit(this);
+    }
+}
+
+/***********************************************************
+ */
+extern (C++) final class TypeDefer : Type
+{
+    extern (D) this()
+    {
+        super(Tdefer);
+    }
+
+    override Type syntaxCopy()
+    {
+        // No semantic analysis done, no need to copy
+        return this;
+    }
+
+    override d_uns64 size(const ref Loc loc)
+    {
+        return SIZE_INVALID;
+    }
+
+    override Expression defaultInit(const ref Loc loc)
+    {
+        return new DeferExp();
+    }
+
+    override Expression defaultInitLiteral(const ref Loc loc)
+    {
+        return new DeferExp();
     }
 
     override void accept(Visitor v)

@@ -58,6 +58,7 @@ class ImportStatement;
 
 class Type;
 class TypeError;
+class TypeDefer;
 class TypeNext;
 class TypeBasic;
 class TypeVector;
@@ -175,6 +176,7 @@ class ExpInitializer;
 class Expression;
 class IntegerExp;
 class ErrorExp;
+class DeferExp;
 class RealExp;
 class ComplexExp;
 class IdentifierExp;
@@ -414,6 +416,7 @@ public:
     // Types
     virtual void visit(TypeBasic *t) { visit((Type *)t); }
     virtual void visit(TypeError *t) { visit((Type *)t); }
+    virtual void visit(TypeDefer *t) { visit((Type *)t); }
     virtual void visit(TypeNull *t) { visit((Type *)t); }
     virtual void visit(TypeVector *t) { visit((Type *)t); }
     virtual void visit(TypeEnum *t) { visit((Type *)t); }
@@ -600,6 +603,7 @@ public:
     virtual void visit(FuncAliasDeclaration *s) { visit((FuncDeclaration *)s); }
     virtual void visit(ErrorInitializer *i) { visit((Initializer *)i); }
     virtual void visit(ErrorExp *e) { visit((Expression *)e); }
+    virtual void visit(DeferExp *e) { visit((Expression *)e); }
     virtual void visit(ComplexExp *e) { visit((Expression *)e); }
     virtual void visit(StructLiteralExp *e) { visit((Expression *)e); }
     virtual void visit(ObjcClassReferenceExp *e) { visit((Expression *)e); }

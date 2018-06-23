@@ -89,6 +89,7 @@ enum ENUMTY
     Twchar,
     Tdchar,
     Terror,
+    Tdefer,
     Tinstance,
     Ttypeof,
     Ttuple,
@@ -199,6 +200,7 @@ public:
     static Type *tdstring;              // immutable(dchar)[]
     static Type *tvalist;               // va_list alias
     static Type *terror;                // for error recovery
+    static Type *tdefer;                // for deferring
     static Type *tnull;                 // for null type
 
     static Type *tsize_t;               // matches size_t alias
@@ -343,6 +345,17 @@ public:
 };
 
 class TypeError : public Type
+{
+public:
+    Type *syntaxCopy();
+
+    d_uns64 size(const Loc &loc);
+    Expression *defaultInit(const Loc &loc);
+    Expression *defaultInitLiteral(const Loc &loc);
+    void accept(Visitor *v) { v->visit(this); }
+};
+
+class TypeDefer : public Type
 {
 public:
     Type *syntaxCopy();

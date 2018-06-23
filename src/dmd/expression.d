@@ -2724,6 +2724,29 @@ extern (C++) final class ErrorExp : Expression
 
 /***********************************************************
  */
+extern (C++) final class DeferExp : Expression
+{
+    extern (D) this()
+    {
+        super(Loc.initial, TOKdefer,__traits(classInstanceSize, DeferExp));
+        type = Type.tdefer;
+    }
+
+    override Expression toLvalue(Scope* sc, Expression e)
+    {
+        return this;
+    }
+
+    override void accept(Visitor v)
+    {
+        v.visit(this);
+    }
+
+    extern (C++) static __gshared DeferExp deferexp; // handy shared value
+}
+
+/***********************************************************
+ */
 extern (C++) final class RealExp : Expression
 {
     real_t value;

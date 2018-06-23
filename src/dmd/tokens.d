@@ -289,6 +289,8 @@ enum TOK : int
     max_,
 }
 
+alias TOKdefer = TOK.finally_; // FWDREF
+
 // Assert that all token enum members have consecutive values and
 // that none of them overlap
 static assert(() {

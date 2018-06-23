@@ -248,6 +248,15 @@ public:
     static ErrorExp *errorexp; // handy shared value
 };
 
+class DeferExp : public Expression
+{
+public:
+    Expression *toLvalue(Scope *sc, Expression *e);
+    void accept(Visitor *v) { v->visit(this); }
+
+    static DeferExp *deferexp; // handy shared value
+};
+
 class RealExp : public Expression
 {
 public:
