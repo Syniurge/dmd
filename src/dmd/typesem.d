@@ -42,6 +42,7 @@ import dmd.identifier;
 import dmd.init;
 import dmd.initsem;
 import dmd.visitor;
+import dmd.members;
 import dmd.mtype;
 import dmd.opover;
 import dmd.root.ctfloat;
@@ -2322,10 +2323,15 @@ private extern(C++) final class ResolveVisitor : Visitor
         *ps = null;
 
         //printf("TypeInstance::resolve(sc = %p, tempinst = '%s')\n", sc, mt.tempinst.toChars());
-        mt.tempinst.dsymbolSemantic(sc);
+        mt.tempinst.determineSymtab(sc);
         if (!global.gag && mt.tempinst.errors)
         {
             *pt = Type.terror;
+            return;
+        }
+        else if (mt.tempinst.symtabState == SemState.Defer)
+        {
+            *pt = Type.tdefer;
             return;
         }
 
