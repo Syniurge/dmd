@@ -101,10 +101,10 @@ private extern(C++) final class Semantic2Visitor : Visitor
         sc.minst = null;
 
         import dmd.staticcond;
-        bool errors;
+        uint errors;
         bool result = evalStaticCondition(sc, sa.exp, sa.exp, errors);
         sc = sc.pop();
-        if (errors)
+        if (errors) // FWDREF FIXME
         {
             errorSupplemental(sa.loc, "while evaluating: `static assert(%s)`", sa.exp.toChars());
         }

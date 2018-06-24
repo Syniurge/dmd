@@ -45,6 +45,8 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
 
     Dsymbols* include(Scope* sc)
     {
+        includeState = SemState.Done;
+
         if (errors)
             return null;
 
@@ -112,9 +114,20 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
+        if (addMemberState == SemState.Done)
+            return;
+
+        void defer() { addMemberState = SemState.Defer; }
+
+//         if (addMemberState == SemState.Init)
+//             setScope(sc);
+
+        addMemberState = SemState.In;
 
         Dsymbols* d = include(sc);
+        if (includeState != SemState.Done)
+            return defer();
+
         if (d)
         {
             Scope* sc2 = newScope(sc);
@@ -123,11 +136,16 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
                 Dsymbol s = (*d)[i];
                 //printf("\taddMember %s to %s\n", s.toChars(), sds.toChars());
                 s.addMember(sc2, sds);
+                if (s.addMemberState == SemState.Defer)
+                    defer();
                 s.setScope(sc2); // FIXME: should go into addMember
             }
             if (sc2 != sc)
                 sc2.pop();
         }
+
+        if (addMemberState != SemState.Defer)
+            addMemberState = SemState.Done;
     }
 
     override void setScope(Scope* sc)
@@ -877,12 +895,20 @@ extern (C++) class ConditionalDeclaration : AttribDeclaration
     override Dsymbols* include(Scope* sc)
     {
         //printf("ConditionalDeclaration::include(sc = %p) scope = %p\n", sc, scope);
+        includeState = SemState.In;
 
         if (errors)
             return null;
 
         assert(condition);
-        return condition.include(_scope ? _scope : sc) ? decl : elsedecl;
+        int result = condition.include(_scope ? _scope : sc);
+        if (condition.isDeferred())
+        {
+            includeState = SemState.Defer;
+            return null;
+        }
+        includeState = SemState.Done;
+        return result ? decl : elsedecl;
     }
 
     override final void addComment(const(char)* comment)

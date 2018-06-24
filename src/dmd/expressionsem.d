@@ -1180,6 +1180,11 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         result = new ErrorExp();
     }
 
+    private void setDefer()
+    {
+        result = DeferExp.deferexp;
+    }
+
     /**************************
      * Semantically analyze Expression.
      * Determine types, fold constants, etc.
@@ -1239,7 +1244,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         }
 
         Dsymbol scopesym;
-        Dsymbol s = sc.search(exp.loc, exp.ident, &scopesym);
+        bool confident;
+        Dsymbol s = sc.search(exp.loc, exp.ident, &scopesym, IgnoreNone, &confident);
         if (s)
         {
             if (s.errors)
@@ -1377,6 +1383,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                     }
                 }
             }
+        }
+
+        if (!confident)
+        {
+            result = DeferExp.deferexp;
+            return;
         }
 
         /* Look for what user might have meant
@@ -3812,6 +3824,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         sc2.pop();
         if (!t)
             goto Lno;
+        if (t.ty == Tdefer)
+            return setDefer();
         // errors, so condition is false
         e.targ = t;
         if (e.tok2 != TOK.reserved)

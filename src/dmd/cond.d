@@ -42,6 +42,7 @@ extern (C++) abstract class Condition : RootObject
     // 0: not computed yet
     // 1: include
     // 2: do not include
+    // 3: deferred
     int inc;
 
     override final DYNCAST dyncast() const
@@ -57,6 +58,11 @@ extern (C++) abstract class Condition : RootObject
     abstract Condition syntaxCopy();
 
     abstract int include(Scope* sc);
+
+    final bool isDeferred()
+    {
+        return inc == 3;
+    }
 
     DebugCondition isDebugCondition()
     {
@@ -840,6 +846,15 @@ extern (C++) final class StaticIfCondition : Condition
             return 0;
         }
 
+        int deferReturn()
+        {
+            inc = 3;
+            return 0;
+        }
+
+        if (isDeferred())
+            inc = 0;
+
         if (inc == 0)
         {
             if (exp.op == TOK.error || nest > 100)
@@ -858,7 +873,7 @@ extern (C++) final class StaticIfCondition : Condition
             sc = sc.push(sc.scopesym);
 
             import dmd.staticcond;
-            bool errors;
+            uint errors;
             bool result = evalStaticCondition(sc, exp, exp, errors);
             sc.pop();
             --nest;
@@ -867,7 +882,7 @@ extern (C++) final class StaticIfCondition : Condition
             if (inc != 0)
                 return (inc == 1);
             if (errors)
-                return errorReturn();
+                return (errors == 1) ? errorReturn() : deferReturn();
             if (result)
                 inc = 1;
             else

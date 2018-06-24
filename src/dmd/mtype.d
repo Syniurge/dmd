@@ -5435,7 +5435,7 @@ extern (C++) abstract class TypeQualified : Type
      *      if type, *pt is set
      */
     final void resolveHelper(const ref Loc loc, Scope* sc, Dsymbol s, Dsymbol scopesym,
-        Expression* pe, Type* pt, Dsymbol* ps, bool intypeid = false)
+        ref bool confident, Expression* pe, Type* pt, Dsymbol* ps, bool intypeid = false) // FWDREF FIXME/NOTE: confident wasn't placed at the end because all resolveHelper calls pass a bool lvalue as last argument, so the compilation which should have been broken wasn't
     {
         version (none)
         {
@@ -5446,6 +5446,11 @@ extern (C++) abstract class TypeQualified : Type
         *pe = null;
         *pt = null;
         *ps = null;
+        if (!confident)
+        {
+            *pt = Type.tdefer;
+            return;
+        }
         if (s)
         {
             //printf("\t1: s = '%s' %p, kind = '%s'\n",s.toChars(), s, s.kind());

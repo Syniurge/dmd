@@ -774,13 +774,13 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
         assert(ti.inst is null);
         ti.inst = ti; // temporary instantiation to enable genIdent()
         scx.flags |= SCOPE.constraint;
-        bool errors;
+        uint errors;
         bool result = evalStaticCondition(scx, constraint, e, errors);
         ti.inst = null;
         ti.symtab = null;
         scx = scx.pop();
         previous = pr.prev; // unlink from threaded list
-        if (errors)
+        if (errors) // FWDREF FIXME
             return false;
         return result;
     }

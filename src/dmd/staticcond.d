@@ -36,12 +36,12 @@ import dmd.utils;
  *      sc  = instantiating scope
  *      exp = original expression, for error messages
  *      e =  resulting expression
- *      errors = set to `true` if errors occurred
+ *      errors = set to `1` if errors occurred, set to `2` if it's been deferred
  * Returns:
  *      true if evaluates to true
  */
 
-bool evalStaticCondition(Scope* sc, Expression exp, Expression e, ref bool errors)
+bool evalStaticCondition(Scope* sc, Expression exp, Expression e, ref uint errors)
 {
     if (e.op == TOK.andAnd || e.op == TOK.orOr)
     {
@@ -85,18 +85,24 @@ bool evalStaticCondition(Scope* sc, Expression exp, Expression e, ref bool error
     sc = sc.endCTFE();
     e = e.optimize(WANTvalue);
 
+    if (e.op == TOKdefer)
+    {
+        errors = 2;
+        return false;
+    }
+
     if (nerrors != global.errors ||
         e.op == TOK.error ||
         e.type.toBasetype() == Type.terror)
     {
-        errors = true;
+        errors = 1;
         return false;
     }
 
     if (!e.type.isBoolean())
     {
         exp.error("expression `%s` of type `%s` does not have a boolean value", exp.toChars(), e.type.toChars());
-        errors = true;
+        errors = 1;
         return false;
     }
 
@@ -108,6 +114,6 @@ bool evalStaticCondition(Scope* sc, Expression exp, Expression e, ref bool error
         return false;
 
     e.error("expression `%s` is not constant", e.toChars());
-    errors = true;
+    errors = 1;
     return false;
 }

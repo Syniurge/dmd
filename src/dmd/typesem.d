@@ -2288,7 +2288,8 @@ private extern(C++) final class ResolveVisitor : Visitor
         }
 
         Dsymbol scopesym;
-        Dsymbol s = sc.search(loc, mt.ident, &scopesym);
+        bool confident;
+        Dsymbol s = sc.search(loc, mt.ident, &scopesym, IgnoreNone, &confident);
 
         if (s)
         {
@@ -2308,7 +2309,7 @@ private extern(C++) final class ResolveVisitor : Visitor
             }
         }
 
-        mt.resolveHelper(loc, sc, s, scopesym, pe, pt, ps, intypeid);
+        mt.resolveHelper(loc, sc, s, scopesym, confident, pe, pt, ps, intypeid);
         if (*pt)
             (*pt) = (*pt).addMod(mt.mod);
     }
@@ -2328,7 +2329,8 @@ private extern(C++) final class ResolveVisitor : Visitor
             return;
         }
 
-        mt.resolveHelper(loc, sc, mt.tempinst, null, pe, pt, ps, intypeid);
+        bool confident = true; // FWDREF FIXME
+        mt.resolveHelper(loc, sc, mt.tempinst, null, confident, pe, pt, ps, intypeid);
         if (*pt)
             *pt = (*pt).addMod(mt.mod);
         //if (*pt) printf("*pt = %d '%s'\n", (*pt).ty, (*pt).toChars());
@@ -2418,8 +2420,9 @@ private extern(C++) final class ResolveVisitor : Visitor
             *pt = t;
         else
         {
+            bool confident = true; // FWDREF FIXME?
             if (Dsymbol s = t.toDsymbol(sc))
-                mt.resolveHelper(loc, sc, s, null, pe, pt, ps, intypeid);
+                mt.resolveHelper(loc, sc, s, null, confident, pe, pt, ps, intypeid);
             else
             {
                 auto e = typeToExpressionHelper(mt, new TypeExp(loc, t));
@@ -2461,8 +2464,9 @@ private extern(C++) final class ResolveVisitor : Visitor
             *pt = t;
         else
         {
+            bool confident = true; // FWDREF FIXME?
             if (Dsymbol s = t.toDsymbol(sc))
-               mt.resolveHelper(loc, sc, s, null, pe, pt, ps, intypeid);
+               mt.resolveHelper(loc, sc, s, null, confident, pe, pt, ps, intypeid);
             else
             {
                 auto e = typeToExpressionHelper(mt, new TypeExp(loc, t));
