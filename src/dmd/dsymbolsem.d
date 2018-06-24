@@ -4976,22 +4976,6 @@ void templateInstanceSemantic(TemplateInstance tempinst, Scope* sc, Expressions*
 
     TemplateDeclaration tempdecl = tempinst.tempdecl.isTemplateDeclaration();
 
-    /* See if there is only one member of template instance, and that
-     * member has the same name as the template instance.
-     * If so, this template instance becomes an alias for that member.
-     */
-    //printf("members.dim = %d\n", members.dim);
-    if (tempinst.members.dim) // FWDREF FIXME should go into members.d?
-    {
-        Dsymbol s;
-        if (Dsymbol.oneMembers(tempinst.members, &s, tempdecl.ident) && s)
-        {
-            //printf("tempdecl.ident = %s, s = '%s'\n", tempdecl.ident.toChars(), s.kind(), s.toPrettyChars());
-            //printf("setting aliasdecl\n");
-            tempinst.aliasdecl = s;
-        }
-    }
-
     /* If function template declaration
      */
     if (fargs && tempinst.aliasdecl)

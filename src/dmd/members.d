@@ -378,9 +378,30 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
             sc = tempdecl._scope; // FIXME: this isn't pretty.. but also a special case?
             super.visit(tempinst);
 
+            if (symtabState != SemState.Done)
+                return;
+
             static if (LOG)
             {
                 printf("adding members done\n");
+            }
+
+            TemplateDeclaration tempdecl = tempinst.tempdecl.isTemplateDeclaration();
+
+            /* See if there is only one member of template instance, and that
+            * member has the same name as the template instance.
+            * If so, this template instance becomes an alias for that member.
+            */
+            //printf("members.dim = %d\n", members.dim);
+            if (tempinst.members.dim)
+            {
+                Dsymbol s;
+                if (Dsymbol.oneMembers(tempinst.members, &s, tempdecl.ident) && s)
+                {
+                    //printf("tempdecl.ident = %s, s = '%s'\n", tempdecl.ident.toChars(), s.kind(), s.toPrettyChars());
+                    //printf("setting aliasdecl\n");
+                    tempinst.aliasdecl = s;
+                }
             }
         }
     }
