@@ -4140,8 +4140,16 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             return;
         }
 
+        void defer()
+        {
+            sd._scope = scx ? scx : sc.copy();
+            sd._scope.setNoFree();
+            sd._scope._module.addDeferredSemantic(sd);
+        }
+
         sd.determineSymtab(sc);
-        assert(sd.symtabState == SemState.Done);
+        if (sd.symtabState != SemState.Done)
+            return defer();
 
         auto sc2 = sd.newScope(sc);
 
@@ -4358,8 +4366,17 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             cldec.semanticRun = PASS.semanticdone;
             return;
         }
+
+        void defer()
+        {
+            cldec._scope = scx ? scx : sc.copy();
+            cldec._scope.setNoFree();
+            cldec._scope._module.addDeferredSemantic(cldec);
+        }
+
         cldec.determineSymtab(sc);
-        assert(cldec.symtabState == SemState.Done);
+        if (cldec.symtabState != SemState.Done)
+            return defer();
 
         for (size_t i = 0; i < cldec.baseclasses.dim; i++)
         {
@@ -4370,13 +4387,10 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             if (tc.sym.semanticRun < PASS.semanticdone)
             {
                 // Forward referencee of one or more bases, try again later
-                cldec._scope = scx ? scx : sc.copy();
-                cldec._scope.setNoFree();
                 if (tc.sym._scope)
                     tc.sym._scope._module.addDeferredSemantic(tc.sym);
-                cldec._scope._module.addDeferredSemantic(cldec);
                 //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
-                return;
+                return defer();
             }
         }
 
