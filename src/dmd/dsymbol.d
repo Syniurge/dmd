@@ -1336,6 +1336,8 @@ public:
                 //printf("\tfound in locals = '%s.%s'\n",toChars(),s1.toChars());
                 return s1;
             }
+            if (symtabState != SemState.Done) // FWDREF FIXME : this may be overkill, but we don't want imported symbols to take precedence over future local symbols
+                return null;
         }
         //printf(" not found in locals\n");
 
