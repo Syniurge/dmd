@@ -234,7 +234,9 @@ extern (C++) final class Import : Dsymbol
      */
     override void addMember(Scope* sc, ScopeDsymbol sd)
     {
-        addMemberState = SemState.Done;
+        if (addMemberState == SemState.Done)
+            return;
+        addMemberState = SemState.In;
 
         //printf("Import.addMember(this=%s, sd=%s, sc=%p)\n", toChars(), sd.toChars(), sc);
         if (names.dim == 0)
@@ -254,8 +256,12 @@ extern (C++) final class Import : Dsymbol
             auto ad = new AliasDeclaration(loc, _alias, tname);
             ad._import = this;
             ad.addMember(sc, sd);
+            assert(ad.addMemberState == SemState.Done);
             aliasdecls.push(ad);
         }
+
+        if (addMemberState != SemState.Defer)
+            addMemberState = SemState.Done;
     }
 
     override void setScope(Scope* sc)

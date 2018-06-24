@@ -135,10 +135,12 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
             {
                 Dsymbol s = (*d)[i];
                 //printf("\taddMember %s to %s\n", s.toChars(), sds.toChars());
+                if (s.addMemberState == SemState.Done)
+                    continue; // FIXME this is temporary to avoid extra setScope calls
                 s.addMember(sc2, sds);
+                s.setScope(sc2); // FWDREF FIXME: should go into addMember
                 if (s.addMemberState == SemState.Defer)
                     defer();
-                s.setScope(sc2); // FIXME: should go into addMember
             }
             if (sc2 != sc)
                 sc2.pop();
@@ -362,7 +364,10 @@ extern (C++) class StorageClassDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
+        if (addMemberState == SemState.Done)
+            return;
+
+        addMemberState = SemState.In;
 
         Dsymbols* d = include(sc);
         if (d)
@@ -382,12 +387,16 @@ extern (C++) class StorageClassDeclaration : AttribDeclaration
                     }
                 }
                 s.addMember(sc2, sds);
-                s.setScope(sc2); // FIXME: should go into addMember
+                if (s.addMemberState == SemState.Defer)
+                    addMemberState = SemState.Defer;
+                s.setScope(sc2); // FWDREF FIXME: should go into addMember
             }
             if (sc2 != sc)
                 sc2.pop();
         }
 
+        if (addMemberState != SemState.Defer)
+            addMemberState = SemState.Done;
     }
 
     override inout(StorageClassDeclaration) isStorageClassDeclaration() inout
@@ -589,8 +598,6 @@ extern (C++) final class ProtDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
-
         if (pkg_identifiers)
         {
             Dsymbol tmp;
@@ -1073,7 +1080,7 @@ extern (C++) final class StaticForeachDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
+        addMemberState = SemState.Done; // FWDREF FIXME
 
         // used only for caching the enclosing symbol
         this.scopesym = sds;
@@ -1158,8 +1165,6 @@ extern(C++) final class ForwardingAttribDeclaration: AttribDeclaration
      */
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
-
         parent = sym.parent = sym.forward = sds;
         return super.addMember(sc, sym);
     }
@@ -1197,7 +1202,7 @@ extern (C++) final class CompileDeclaration : AttribDeclaration
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
+        addMemberState = SemState.Done; // FWDREF FIXME
 
         //printf("CompileDeclaration::addMember(sc = %p, sds = %p, memnum = %d)\n", sc, sds, memnum);
         this.scopesym = sds;

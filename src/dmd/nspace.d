@@ -46,7 +46,7 @@ extern (C++) final class Nspace : ScopeDsymbol
 
     override void addMember(Scope* sc, ScopeDsymbol sds)
     {
-        addMemberState = SemState.Done;
+        addMemberState = SemState.Done; // FWDREF FIXME
 
         ScopeDsymbol.addMember(sc, sds);
         if (members)

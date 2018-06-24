@@ -627,6 +627,9 @@ extern (C++) class Dsymbol : RootObject
         //printf("Dsymbol::addMember('%s')\n", toChars());
         //printf("Dsymbol::addMember(this = %p, '%s' scopesym = '%s')\n", this, toChars(), sds.toChars());
         //printf("Dsymbol::addMember(this = %p, '%s' sds = %p, sds.symtab = %p)\n", this, toChars(), sds, sds.symtab);
+        if (addMemberState == SemState.Done)
+            return;
+
         parent = sds;
         if (!isAnonymous()) // no name, so can't add it to symbol table
         {
@@ -648,6 +651,7 @@ extern (C++) class Dsymbol : RootObject
                 }
             }
         }
+
         addMemberState = SemState.Done;
     }
 

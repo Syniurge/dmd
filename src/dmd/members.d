@@ -128,6 +128,8 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                     while (nextMember < members.dim)
                     {
                         auto s = (*members)[nextMember++];
+                        if (s.addMemberState == SemState.Done)
+                            continue; // FIXME this is temporary to avoid extra setScope calls
                         s.addMember(sc2, sc2.scopesym);
                         s.setScope(sc2); // FIXME: should go into addMember
                         if (s.addMemberState == SemState.Defer)

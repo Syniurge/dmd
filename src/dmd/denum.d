@@ -105,6 +105,8 @@ extern (C++) final class EnumDeclaration : ScopeDsymbol
         }
         if (isAnonymous())
             added = true;
+
+        addMemberState = SemState.Done;
     }
 
     override void setScope(Scope* sc)
