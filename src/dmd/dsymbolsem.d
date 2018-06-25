@@ -601,6 +601,13 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (ad)
             dsym.storage_class |= ad.storage_class & STC.TYPECTOR;
 
+        void defer()
+        {
+            dsym._scope = scx ? scx : sc.copy();
+            dsym._scope.setNoFree();
+            dsym._scope._module.addDeferredSemantic(dsym);
+        }
+
         /* If auto type inference, do the inference
          */
         int inferred = 0;
@@ -642,9 +649,12 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             Scope* sc2 = sc.push();
             sc2.stc |= (dsym.storage_class & STC.FUNCATTR);
             dsym.inuse++;
-            dsym.type = dsym.type.typeSemantic(dsym.loc, sc2);
+            auto vtype = dsym.type.typeSemantic(dsym.loc, sc2);
             dsym.inuse--;
             sc2.pop();
+            if (vtype.ty == Tdefer)
+                return defer();
+            dsym.type = vtype;
         }
         //printf(" semantic type = %s\n", type ? type.toChars() : "null");
         if (dsym.type.ty == Terror)
