@@ -2329,7 +2329,7 @@ private extern(C++) final class ResolveVisitor : Visitor
             *pt = Type.terror;
             return;
         }
-        else if (mt.tempinst.symtabState == SemState.Defer)
+        else if (mt.tempinst.symtabState != SemState.Done)
         {
             *pt = Type.tdefer;
             return;

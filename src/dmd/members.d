@@ -197,6 +197,15 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
             if (symtabState == SemState.Done)
                 return;
 
+            void mirrorInst()
+            {
+                inst.determineSymtab(sc);
+                symtabState = inst.symtabState;
+            }
+
+            if (inst && tempinst != inst)
+                return mirrorInst();
+
             if (symtabState == SemState.Init)
             {
                 if (!sc)
@@ -332,7 +341,7 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                     {
                         printf("\tit's a match with instance %p, %d\n", tempinst.inst, tempinst.inst.semanticRun);
                     }
-                    return;
+                    return mirrorInst();
                 }
                 static if (LOG)
                 {
