@@ -1161,8 +1161,10 @@ extern (C++) final class Module : Package
         nested++;
 
         size_t len;
+        bool confidenceBoosted;
         do
         {
+            Scope.confidenceBoost = confidenceBoosted = (dprogress == 0);
             dprogress = 0;
             len = deferred.dim;
             if (!len)
@@ -1194,7 +1196,7 @@ extern (C++) final class Module : Package
             if (todoalloc)
                 free(todoalloc);
         }
-        while (deferred.dim < len || dprogress); // while making progress
+        while (deferred.dim < len || dprogress || !confidenceBoosted); // while making progress
         nested--;
         //printf("-Module::runDeferredSemantic(), len = %d\n", deferred.dim);
     }

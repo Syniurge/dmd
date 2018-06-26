@@ -126,6 +126,7 @@ struct Scope
     Identifier prevAnchor;     /// qualified symbol name of last doc anchor
 
     extern (C++) static __gshared Scope* freelist;
+    extern (C++) static __gshared bool confidenceBoost; // FWDREF FIXME: global state is bad
 
     extern (C++) static Scope* alloc()
     {
@@ -446,6 +447,13 @@ struct Scope
                 deprecation10378(loc, sold, snew);
             if (global.params.bug10378)
                 s = sold;
+        }
+        if (s && confident && !*confident && confidenceBoost)
+        {
+            // Try to unblock a stalled Module.runDeferredSemantic by boosting confidence on the result, even if the "correct" symbol gets added later to one of the symtabs
+            // FWDREF NOTE: this should work for most D code, but if we really want to make D declarations totally order-independent a much more complex solutio is needed
+            *confident = true;
+            confidenceBoost = false;
         }
         return s;
     }
