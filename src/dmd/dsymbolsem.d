@@ -4102,6 +4102,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             scx = sd._scope; // save so we don't make redundant copies
             sd._scope = null;
         }
+        sd.semScope = sc;
 
         if (!sd.parent)
         {
@@ -4316,6 +4317,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             scx = cldec._scope; // save so we don't make redundant copies
             cldec._scope = null;
         }
+        cldec.semScope = sc;
 
         if (!cldec.parent)
         {
@@ -4651,6 +4653,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             scx = idec._scope; // save so we don't make redundant copies
             idec._scope = null;
         }
+        idec.semScope = sc;
 
         if (!idec.parent)
         {
