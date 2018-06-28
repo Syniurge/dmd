@@ -559,8 +559,13 @@ extern (C++) Expression op_overload(Expression e, Scope* sc)
                 ae.e1 = ae1old; // recovery
                 ae.lengthVar = null;
             }
-            e.e1 = e.e1.expressionSemantic(sc);
-            e.e1 = resolveProperties(sc, e.e1);
+            auto e1x = e.e1.expressionSemantic(sc);
+            if (e1x.op == TOKdefer)
+            {
+                result = e1x;
+                return;
+            }
+            e.e1 = resolveProperties(sc, e1x);
             if (e.e1.op == TOK.error)
             {
                 result = e.e1;

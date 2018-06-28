@@ -453,9 +453,9 @@ private bool arrayExpressionToCommonType(Scope* sc, Expressions* exps, Type* pt)
  * Returns:
  *      true    a semantic error occurred
  */
-private bool preFunctionParameters(Scope* sc, Expressions* exps)
+private SemResult preFunctionParameters(Scope* sc, Expressions* exps)
 {
-    bool err = false;
+    SemResult err;
     if (exps)
     {
         expandTuples(exps);
@@ -468,12 +468,12 @@ private bool preFunctionParameters(Scope* sc, Expressions* exps)
             {
                 arg.error("cannot pass type `%s` as a function argument", arg.toChars());
                 arg = new ErrorExp();
-                err = true;
+                err = SemResult.Err;
             }
             else if (checkNonAssignmentArrayOp(arg))
             {
                 arg = new ErrorExp();
-                err = true;
+                err = SemResult.Err;
             }
             (*exps)[i] = arg;
         }
@@ -1185,6 +1185,36 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         result = DeferExp.deferexp;
     }
 
+    private void setErrorOrDefer(Type t)
+    {
+        assert(t.ty == Terror || t.ty == Tdefer);
+        return t.ty == Tdefer ? setDefer() : setError();
+    }
+
+    private void setErrorOrDefer(SemResult result)
+    {
+        assert(result != SemResult.Ok);
+        return (result == SemResult.Defer) ? setDefer() : setError();
+    }
+
+    private bool semanticOrDefer(ref Expression exp)
+    {
+        auto e = exp.expressionSemantic(sc);
+        if (e.op == TOKdefer)
+            return true;
+        exp = e;
+        return false;
+    }
+
+    private bool semanticOrDefer(Loc loc, ref Type t)
+    {
+        auto tnew = t.typeSemantic(loc, sc);
+        if (tnew.ty == Tdefer)
+            return true;
+        t = tnew;
+        return false;
+    }
+
     /**************************
      * Semantically analyze Expression.
      * Determine types, fold constants, etc.
@@ -1669,15 +1699,16 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             return;
         }
 
-        if (exp.e0)
-            exp.e0 = exp.e0.expressionSemantic(sc);
+        if (exp.e0 && semanticOrDefer(exp.e0))
+            return setDefer();
 
         // Run semantic() on each argument
         bool err = false;
         for (size_t i = 0; i < exp.exps.dim; i++)
         {
             Expression e = (*exp.exps)[i];
-            e = e.expressionSemantic(sc);
+            if (semanticOrDefer(e))
+                return setDefer();
             if (!e.type)
             {
                 exp.error("`%s` has no value", e.toChars());
@@ -1714,9 +1745,11 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         /* Perhaps an empty array literal [ ] should be rewritten as null?
          */
 
-        if (e.basis)
-            e.basis = e.basis.expressionSemantic(sc);
-        if (arrayExpressionSemantic(e.elements, sc) || (e.basis && e.basis.op == TOK.error))
+        if (e.basis && semanticOrDefer(e.basis))
+            return setDefer();
+        if (auto arrResult = arrayExpressionSemantic(e.elements, sc))
+            return setErrorOrDefer(arrResult);
+        if (e.basis && e.basis.op == TOK.error)
             return setError();
 
         expandTuples(e.elements);
@@ -1759,10 +1792,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         }
 
         // Run semantic() on each element
-        bool err_keys = arrayExpressionSemantic(e.keys, sc);
-        bool err_vals = arrayExpressionSemantic(e.values, sc);
-        if (err_keys || err_vals)
+        auto err_keys = arrayExpressionSemantic(e.keys, sc);
+        auto err_vals = arrayExpressionSemantic(e.values, sc);
+        if (err_keys == SemResult.Err || err_vals == SemResult.Err)
             return setError();
+        else if (err_keys == SemResult.Defer || err_vals == SemResult.Defer)
+            return setDefer();
 
         expandTuples(e.keys);
         expandTuples(e.values);
@@ -1774,9 +1809,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
         Type tkey = null;
         Type tvalue = null;
-        err_keys = arrayExpressionToCommonType(sc, e.keys, &tkey);
-        err_vals = arrayExpressionToCommonType(sc, e.values, &tvalue);
-        if (err_keys || err_vals)
+        bool err_keys_ty = arrayExpressionToCommonType(sc, e.keys, &tkey);
+        bool err_vals_ty = arrayExpressionToCommonType(sc, e.values, &tvalue);
+        if (err_keys_ty || err_vals_ty)
             return setError();
 
         if (tkey == Type.terror || tvalue == Type.terror)
@@ -1813,8 +1848,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             return setError();
 
         // run semantic() on each element
-        if (arrayExpressionSemantic(e.elements, sc))
-            return setError();
+        if (auto arrResult = arrayExpressionSemantic(e.elements, sc))
+            return setErrorOrDefer(arrResult);
 
         expandTuples(e.elements);
 
@@ -1861,7 +1896,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         else if (t)
         {
             //printf("t = %d %s\n", t.ty, t.toChars());
-            exp.type = t.typeSemantic(exp.loc, sc);
+            t = t.typeSemantic(exp.loc, sc);
+            if (t.ty != Tdefer)
+                exp.type = t;
             e = exp;
         }
         else if (s)
@@ -1895,7 +1932,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         while (ti)
         {
             WithScopeSymbol withsym;
-            if (!ti.findTempDecl(sc, &withsym) || !ti.semanticTiargs(sc))
+            if (!ti.findTempDecl(sc, &withsym) || !ti.semanticTiargs(sc)) // FWDREF FIXME
                 return setError();
             if (withsym && withsym.withstate.wthis)
             {
@@ -2049,9 +2086,11 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         }
 
         ClassDeclaration cdthis = null;
+        Type etype;
         if (exp.thisexp)
         {
-            exp.thisexp = exp.thisexp.expressionSemantic(sc);
+            if (semanticOrDefer(exp.thisexp))
+                return setDefer();
             if (exp.thisexp.op == TOK.error)
                 return setError();
 
@@ -2063,13 +2102,16 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             }
 
             sc = sc.push(cdthis);
-            exp.type = exp.newtype.typeSemantic(exp.loc, sc);
+            etype = exp.newtype.typeSemantic(exp.loc, sc);
             sc = sc.pop();
         }
         else
         {
-            exp.type = exp.newtype.typeSemantic(exp.loc, sc);
+            etype = exp.newtype.typeSemantic(exp.loc, sc);
         }
+        if (etype.ty == Tdefer)
+            return setDefer();
+        exp.type = etype;
         if (exp.type.ty == Terror)
             return setError();
 
@@ -2078,8 +2120,11 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             if (exp.type.toBasetype().ty == Ttuple)
             {
                 // --> new T[edim]
-                exp.type = new TypeSArray(exp.type, edim);
-                exp.type = exp.type.typeSemantic(exp.loc, sc);
+                etype = new TypeSArray(exp.type, edim);
+                etype = etype.typeSemantic(exp.loc, sc);
+                if (etype.ty == Tdefer)
+                    return setDefer();
+                exp.type = etype;
                 if (exp.type.ty == Terror)
                     return setError();
             }
@@ -2096,16 +2141,19 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         Type tb = exp.type.toBasetype();
         //printf("tb: %s, deco = %s\n", tb.toChars(), tb.deco);
 
-        if (arrayExpressionSemantic(exp.newargs, sc) ||
-            preFunctionParameters(sc, exp.newargs))
-        {
-            return setError();
-        }
-        if (arrayExpressionSemantic(exp.arguments, sc) ||
-            preFunctionParameters(sc, exp.arguments))
-        {
-            return setError();
-        }
+        auto err = arrayExpressionSemantic(exp.newargs, sc);
+        if (!err)
+            err = preFunctionParameters(sc, exp.newargs);
+
+        if (err)
+            return setErrorOrDefer(err);
+
+        err = arrayExpressionSemantic(exp.arguments, sc);
+        if (!err)
+            err = preFunctionParameters(sc, exp.arguments);
+
+        if (err)
+            return setErrorOrDefer(err);
 
         if (exp.thisexp && tb.ty != Tclass)
         {
@@ -2517,6 +2565,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             e.type = e.var.type;
         if (e.type && !e.type.deco)
             e.type = e.type.typeSemantic(e.loc, sc);
+        assert(e.type.ty != Tdefer); // FWDREF FIXME: this might happen
 
         /* Fix for 1161 doesn't work because it causes protection
          * problems when instantiating imported templates passing private
@@ -2599,7 +2648,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         if (exp.td)
         {
             assert(exp.td.parameters && exp.td.parameters.dim);
-            exp.td.dsymbolSemantic(sc);
+            exp.td.dsymbolSemantic(sc); // FWDREF TODO
             exp.type = Type.tvoid; // temporary type
 
             if (exp.fd.treq) // defer type determination
@@ -2768,12 +2817,18 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         }
         if (exp.e1.op == TOK.function_)
         {
-            if (arrayExpressionSemantic(exp.arguments, sc) || preFunctionParameters(sc, exp.arguments))
-                return setError();
+            auto err = arrayExpressionSemantic(exp.arguments, sc);
+            if (!err)
+                err = preFunctionParameters(sc, exp.arguments);
+            if (err)
+                return setErrorOrDefer(err);
 
             // Run e1 semantic even if arguments have any errors
             FuncExp fe = cast(FuncExp)exp.e1;
-            exp.e1 = callExpSemantic(fe, sc, exp.arguments);
+            auto e1x = callExpSemantic(fe, sc, exp.arguments);
+            if (e1x.op == TOKdefer)
+                return setDefer();
+            exp.e1 = e1x;
             if (exp.e1.op == TOK.error)
             {
                 result = exp.e1;
@@ -2793,7 +2848,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         if (exp.e1.op == TOK.scope_)
         {
             ScopeExp se = cast(ScopeExp)exp.e1;
-            TemplateInstance ti = se.sds.isTemplateInstance();
+            TemplateInstance ti = se.sds.isTemplateInstance(); // FWDREF TODO
             if (ti)
             {
                 /* Attempt to instantiate ti. If that works, go with it.
@@ -2824,7 +2879,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 else
                 {
                     Expression e1x = exp.e1.expressionSemantic(sc);
-                    if (e1x.op == TOK.error)
+                    if (e1x.op == TOK.error || e1x.op == TOKdefer)
                     {
                         result = e1x;
                         return;
@@ -2866,7 +2921,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 else
                 {
                     Expression e1x = exp.e1.expressionSemantic(sc);
-                    if (e1x.op == TOK.error)
+                    if (e1x.op == TOK.error || e1x.op == TOKdefer)
                     {
                         result = e1x;
                         return;
@@ -2887,8 +2942,10 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         {
             if (exp.e1.op == TOK.dotIdentifier)
             {
-                DotIdExp die = cast(DotIdExp)exp.e1;
-                exp.e1 = die.expressionSemantic(sc);
+                Expression die = cast(DotIdExp)exp.e1;
+                if (semanticOrDefer(die))
+                    return setDefer();
+                exp.e1 = die;
                 /* Look for e1 having been rewritten to expr.opDispatch!(string)
                  * We handle such earlier, so go back.
                  * Note that in the rewrite, we carefully did not run semantic() on e1
@@ -2967,8 +3024,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             result = exp.e1;
             return;
         }
-        if (arrayExpressionSemantic(exp.arguments, sc) || preFunctionParameters(sc, exp.arguments))
-            return setError();
+        if (auto err = arrayExpressionSemantic(exp.arguments, sc) | preFunctionParameters(sc, exp.arguments))
+            return setErrorOrDefer(err);
 
         // Check for call operator overload
         if (t1)
@@ -3152,7 +3209,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             }
 
             // Do overload resolution
-            exp.f = resolveFuncCall(exp.loc, sc, s, tiargs, ue1 ? ue1.type : null, exp.arguments);
+            exp.f = resolveFuncCall(exp.loc, sc, s, tiargs, ue1 ? ue1.type : null, exp.arguments); // FWDREF FIXME
             if (!exp.f || exp.f.errors || exp.f.type.ty == Terror)
                 return setError();
 
@@ -3765,9 +3822,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             e = new TypeidExp(ea.loc, ea);
             e.type = Type.typeinfoclass.type;
         }
-        else if (ta.ty == Terror)
+        else if (ta.ty == Terror || ta.ty == Tdefer)
         {
-            e = new ErrorExp();
+            return setErrorOrDefer(ta);
         }
         else
         {
@@ -3898,7 +3955,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                     auto args = new Parameters();
                     args.reserve(cd.baseclasses.dim);
                     if (cd.semanticRun < PASS.semanticdone)
-                        cd.dsymbolSemantic(null);
+                        cd.dsymbolSemantic(null); // FWDREF TODO
                     for (size_t i = 0; i < cd.baseclasses.dim; i++)
                     {
                         BaseClass* b = (*cd.baseclasses)[i];
@@ -4007,7 +4064,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
              * is(targ == tspec)
              * is(targ : tspec)
              */
-            e.tspec = e.tspec.typeSemantic(e.loc, sc);
+            if (semanticOrDefer(e.loc, e.tspec))
+                return setDefer();
             //printf("targ  = %s, %s\n", targ.toChars(), targ.deco);
             //printf("tspec = %s, %s\n", tspec.toChars(), tspec.deco);
 
@@ -4166,12 +4224,15 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             return;
         }
 
-        exp.e1 = exp.e1.expressionSemantic(sc);
-        exp.e1 = exp.e1.optimize(WANTvalue);
-        exp.e1 = exp.e1.modifiableLvalue(sc, exp.e1);
-        exp.type = exp.e1.type;
+        auto e1x = exp.e1.expressionSemantic(sc);
+        e1x = e1x.optimize(WANTvalue);
+        if (e1x.op == TOKdefer)
+            return setDefer();
+        e1x = e1x.modifiableLvalue(sc, exp.e1);
+        exp.type = e1x.type;
         if (exp.checkScalar())
             return setError();
+        exp.e1 = e1x;
 
         int arith = (exp.op == TOK.addAssign || exp.op == TOK.minAssign || exp.op == TOK.mulAssign || exp.op == TOK.divAssign || exp.op == TOK.modAssign || exp.op == TOK.powAssign);
         int bitwise = (exp.op == TOK.andAssign || exp.op == TOK.orAssign || exp.op == TOK.xorAssign);
@@ -4228,7 +4289,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
     private Expression compileIt(CompileExp exp)
     {
         //printf("CompileExp::compileIt('%s')\n", exp.toChars());
-        auto se = semanticString(sc, exp.e1, "argument to mixin");
+        auto se = semanticString(sc, exp.e1, "argument to mixin"); // FWDREF TODO
         if (!se)
             return null;
         se = se.toUTF8(sc);
@@ -4272,7 +4333,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             printf("ImportExp::semantic('%s')\n", e.toChars());
         }
 
-        auto se = semanticString(sc, e.e1, "file name argument");
+        auto se = semanticString(sc, e.e1, "file name argument"); // FWDREF TODO
         if (!se)
             return setError();
         se = se.toUTF8(sc);
@@ -4534,6 +4595,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         }
         else
         {
+            if (exp.var.type.ty != Tdefer) // FWDREF FIXME identation
+            {
             exp.type = exp.var.type;
             if (!exp.type && global.errors) // var is goofed up, just return error.
                 return setError();
@@ -4543,6 +4606,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 t1 = t1.nextOf();
 
             exp.type = exp.type.addMod(t1.mod);
+            }
 
             Dsymbol vparent = exp.var.toParent();
             AggregateDeclaration ad = vparent ? vparent.isAggregateDeclaration() : null;
@@ -4703,7 +4767,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             TemplateInstance ti = dti.ti;
             {
                 //assert(ti.needsTypeInference(sc));
-                ti.dsymbolSemantic(sc);
+                ti.dsymbolSemantic(sc); // FWDREF TODO
                 if (!ti.inst || ti.errors) // if template failed to expand
                     return setError();
 
@@ -5288,7 +5352,10 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
         if (exp.to)
         {
-            exp.to = exp.to.typeSemantic(exp.loc, sc);
+            auto t = exp.to.typeSemantic(exp.loc, sc);
+            if (t.ty == Tdefer)
+                return setDefer();
+            exp.to = t;
             if (exp.to == Type.terror)
                 return setError();
 
@@ -5418,8 +5485,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             return;
         }
 
-        exp.e1 = exp.e1.expressionSemantic(sc);
-        exp.type = exp.to.typeSemantic(exp.loc, sc);
+        auto e1x = exp.e1.expressionSemantic(sc);
+        auto t = exp.to.typeSemantic(exp.loc, sc);
+        if (e1x.op == TOKdefer || t.ty == Tdefer)
+            return setDefer();
+        exp.e1 = e1x;
+        exp.type = t;
         if (exp.e1.op == TOK.error || exp.type.ty == Terror)
         {
             result = exp.e1;
@@ -5603,7 +5674,10 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
         /* Run semantic on lwr and upr.
          */
+        { // FWDREF FIXME indentation
         Scope* scx = sc;
+        scope(exit) if (sc != scx)
+            sc = sc.pop();
         if (t1b.ty == Tsarray || t1b.ty == Tarray || t1b.ty == Ttuple)
         {
             // Create scope for 'length' variable
@@ -5616,26 +5690,29 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         {
             if (t1b.ty == Ttuple)
                 sc = sc.startCTFE();
-            exp.lwr = exp.lwr.expressionSemantic(sc);
-            exp.lwr = resolveProperties(sc, exp.lwr);
+            auto elwr = exp.lwr.expressionSemantic(sc);
+            elwr = resolveProperties(sc, elwr);
             if (t1b.ty == Ttuple)
                 sc = sc.endCTFE();
-            exp.lwr = exp.lwr.implicitCastTo(sc, Type.tsize_t);
+            if (elwr.op == TOKdefer)
+                return setDefer();
+            exp.lwr = elwr.implicitCastTo(sc, Type.tsize_t);
         }
         if (exp.upr)
         {
             if (t1b.ty == Ttuple)
                 sc = sc.startCTFE();
-            exp.upr = exp.upr.expressionSemantic(sc);
-            exp.upr = resolveProperties(sc, exp.upr);
+            auto eupr = exp.upr.expressionSemantic(sc);
+            eupr = resolveProperties(sc, eupr);
             if (t1b.ty == Ttuple)
                 sc = sc.endCTFE();
-            exp.upr = exp.upr.implicitCastTo(sc, Type.tsize_t);
+            if (eupr.op == TOKdefer)
+                return setDefer();
+            exp.upr = eupr.implicitCastTo(sc, Type.tsize_t);
         }
-        if (sc != scx)
-            sc = sc.pop();
         if (exp.lwr && exp.lwr.type == Type.terror || exp.upr && exp.upr.type == Type.terror)
             return setError();
+        }
 
         if (t1b.ty == Ttuple)
         {
@@ -5803,8 +5880,10 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             if (exp.type)
                 printf("\ttype = %s\n", exp.type.toChars());
         }
-        exp.e1 = exp.e1.expressionSemantic(sc);
-        exp.e2 = exp.e2.expressionSemantic(sc);
+        if (semanticOrDefer(exp.e1))
+            return setDefer();
+        if (semanticOrDefer(exp.e2))
+            return setDefer();
 
         if (exp.e1.op == TOK.type)
         {
@@ -5879,12 +5958,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         ue = ue.expressionSemantic(sc);
         ue = resolveProperties(sc, ue);
 
-        if (le.op == TOK.error)
+        if (le.op == TOK.error || le.op == TOKdefer)
         {
             result = le;
             return;
         }
-        if (ue.op == TOK.error)
+        if (ue.op == TOK.error || ue.op == TOKdefer)
         {
             result = ue;
             return;
@@ -5952,11 +6031,13 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
         // operator overloading should be handled in ArrayExp already.
         if (!exp.e1.type)
-            exp.e1 = exp.e1.expressionSemantic(sc);
+            if (semanticOrDefer(exp.e1))
+                return setDefer();
         assert(exp.e1.type); // semantic() should already be run on it
         if (exp.e1.op == TOK.type && exp.e1.type.ty != Ttuple)
         {
-            exp.e2 = exp.e2.expressionSemantic(sc);
+            if (semanticOrDefer(exp.e2))
+                return setDefer();
             exp.e2 = resolveProperties(sc, exp.e2);
             Type nt;
             if (exp.e2.op == TOK.type)
@@ -5990,7 +6071,10 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
         /* Run semantic on e2
          */
+        { // FWDREF FIXME indentation
         Scope* scx = sc;
+        scope(exit) if (sc != scx)
+            sc = sc.pop();
         if (t1b.ty == Tsarray || t1b.ty == Tarray || t1b.ty == Ttuple)
         {
             // Create scope for 'length' variable
@@ -5999,22 +6083,24 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             sym.parent = sc.scopesym;
             sc = sc.push(sym);
         }
+        { // FWDREF FIXME indentation
         if (t1b.ty == Ttuple)
             sc = sc.startCTFE();
-        exp.e2 = exp.e2.expressionSemantic(sc);
-        exp.e2 = resolveProperties(sc, exp.e2);
-        if (t1b.ty == Ttuple)
+        scope(exit) if (t1b.ty == Ttuple)
             sc = sc.endCTFE();
+        if (semanticOrDefer(exp.e2))
+            return setDefer();
+        exp.e2 = resolveProperties(sc, exp.e2);
+        }
         if (exp.e2.op == TOK.tuple)
         {
             TupleExp te = cast(TupleExp)exp.e2;
             if (te.exps && te.exps.dim == 1)
                 exp.e2 = Expression.combine(te.e0, (*te.exps)[0]); // bug 4444 fix
         }
-        if (sc != scx)
-            sc = sc.pop();
         if (exp.e2.type == Type.terror)
             return setError();
+        }
 
         if (checkNonAssignmentArrayOp(exp.e1))
             return setError();
@@ -6303,7 +6389,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             Expression res;
 
             ArrayExp ae = cast(ArrayExp)exp.e1;
-            ae.e1 = ae.e1.expressionSemantic(sc);
+            if (semanticOrDefer(ae.e1))
+                return setDefer();
             ae.e1 = resolveProperties(sc, ae.e1);
             Expression ae1old = ae.e1;
 
@@ -6351,6 +6438,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                         return;
                     }
                     exp.e2 = res;
+                    assert(res.op != TOKdefer); // FWDREF FIXME temporary
 
                     /* Rewrite (a[arguments] = e2) as:
                      *      a.opIndexAssign(e2, arguments)
@@ -6389,6 +6477,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                         return;
                     }
                     exp.e2 = res;
+                    assert(res.op != TOKdefer); // FWDREF FIXME temporary
 
                     /* Rewrite (a[i..j] = e2) as:
                      *      a.opSliceAssign(e2, i, j)
@@ -6478,7 +6567,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 if (e1x.op == TOK.slice)
                     (cast(SliceExp)e1x).arrayop = true;
 
-                e1x = e1x.expressionSemantic(sc);
+                if (semanticOrDefer(e1x))
+                    return setDefer();
             }
 
             /* We have f = value.
@@ -6505,7 +6595,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
          */
         {
             Expression e2x = inferType(exp.e2, t1.baseElemOf());
-            e2x = e2x.expressionSemantic(sc);
+            if (semanticOrDefer(e2x))
+                return setDefer();
             e2x = resolveProperties(sc, e2x);
             if (e2x.op == TOK.type)
                 e2x = resolveAliasThis(sc, e2x); //https://issues.dlang.org/show_bug.cgi?id=17684
@@ -6930,6 +7021,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             else
                 assert(exp.op == TOK.blit);
 
+            assert(e1x.op != TOKdefer && e2x.op != TOKdefer); // FWDREF FIXME temporary
             exp.e1 = e1x;
             exp.e2 = e2x;
         }
@@ -7031,6 +7123,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 return;
             }
 
+            assert(e1x.op != TOKdefer && e2x.op != TOKdefer); // FWDREF FIXME temporary
             exp.e1 = e1x;
             exp.e2 = e2x;
             t1 = e1x.type.toBasetype();
@@ -8665,6 +8758,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         if (e1x.op == TOK.type)
             e1x = resolveAliasThis(sc, e1x);
 
+        if (e1x.op == TOKdefer)
+            return setDefer();
+
         e1x = resolveProperties(sc, e1x);
         e1x = e1x.toBoolean(sc);
 
@@ -8688,6 +8784,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         // for static alias this: https://issues.dlang.org/show_bug.cgi?id=17684
         if (e2x.op == TOK.type)
             e2x = resolveAliasThis(sc, e2x);
+
+        if (e2x.op == TOKdefer)
+            return setDefer();
 
         e2x = resolveProperties(sc, e2x);
 
@@ -9162,7 +9261,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         sc.merge(exp.loc, ctorflow1);
         ctorflow1.freeFieldinit();
 
-        if (ec.op == TOK.error)
+        if (ec.op == TOK.error || ec.op == TOKdefer)
         {
             result = ec;
             return;
@@ -9171,7 +9270,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             return setError();
         exp.econd = ec;
 
-        if (e1x.op == TOK.error)
+        if (e1x.op == TOK.error || e1x.op == TOKdefer)
         {
             result = e1x;
             return;
@@ -9180,7 +9279,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             return setError();
         exp.e1 = e1x;
 
-        if (e2x.op == TOK.error)
+        if (e2x.op == TOK.error || e2x.op == TOKdefer)
         {
             result = e2x;
             return;
@@ -9341,7 +9440,7 @@ Expression unaSemantic(UnaExp e, Scope* sc)
         printf("UnaExp::semantic('%s')\n", e.toChars());
     }
     Expression e1x = e.e1.expressionSemantic(sc);
-    if (e1x.op == TOK.error)
+    if (e1x.op == TOK.error || e1x.op == TOKdefer)
         return e1x;
     e.e1 = e1x;
     return null;
@@ -9366,9 +9465,9 @@ Expression binSemantic(BinExp e, Scope* sc)
     if (e2x.op == TOK.type)
         e2x = resolveAliasThis(sc, e2x);
 
-    if (e1x.op == TOK.error)
+    if (e1x.op == TOK.error || e1x.op == TOKdefer)
         return e1x;
-    if (e2x.op == TOK.error)
+    if (e2x.op == TOK.error || e2x.op == TOKdefer)
         return e2x;
     e.e1 = e1x;
     e.e2 = e2x;
@@ -9568,6 +9667,8 @@ Expression semanticY(DotIdExp exp, Scope* sc, int flag)
         if (sc.flags & SCOPE.ignoresymbolvisibility)
             flags |= IgnoreSymbolVisibility;
         Dsymbol s = ie.sds.search(exp.loc, exp.ident, flags);
+        if (!s && ie.sds.symtabState != SemState.Done)
+            return DeferExp.deferexp;
         /* Check for visibility before resolving aliases because public
          * aliases to private symbols are public.
          */
@@ -9832,7 +9933,7 @@ Expression semanticY(DotTemplateInstanceExp exp, Scope* sc, int flag)
     assert(e);
 
 L1:
-    if (e.op == TOK.error)
+    if (e.op == TOK.error || e.op == TOKdefer)
         return e;
     if (e.op == TOK.dotVariable)
     {

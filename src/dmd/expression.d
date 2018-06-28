@@ -65,6 +65,13 @@ import dmd.typesem;
 import dmd.utf;
 import dmd.visitor;
 
+enum SemResult : int
+{
+    Ok = 0,
+    Err,
+    Defer
+};
+
 enum LOGSEMANTIC = false;
 void emplaceExp(T : Expression, Args...)(void* p, Args args)
 {
@@ -929,9 +936,9 @@ extern (C++) Expression resolveUFCSProperties(Scope* sc, Expression e1, Expressi
 /******************************
  * Perform semantic() on an array of Expressions.
  */
-extern (C++) bool arrayExpressionSemantic(Expressions* exps, Scope* sc, bool preserveErrors = false)
+extern (C++) SemResult arrayExpressionSemantic(Expressions* exps, Scope* sc, bool preserveErrors = false)
 {
-    bool err = false;
+    SemResult result;
     if (exps)
     {
         foreach (ref e; *exps)
@@ -940,13 +947,15 @@ extern (C++) bool arrayExpressionSemantic(Expressions* exps, Scope* sc, bool pre
             {
                 auto e2 = e.expressionSemantic(sc);
                 if (e2.op == TOK.error)
-                    err = true;
-                if (preserveErrors || e2.op != TOK.error)
+                    result = SemResult.Err;
+                if (e2.op == TOKdefer && result != SemResult.Err)
+                    result = SemResult.Defer;
+                else if (preserveErrors || e2.op != TOK.error)
                     e = e2;
             }
         }
     }
-    return err;
+    return result;
 }
 
 /****************************************
@@ -1933,9 +1942,9 @@ extern (C++) abstract class Expression : RootObject
 
     final bool checkScalar()
     {
-        if (op == TOK.error)
+        if (op == TOK.error || op == TOKdefer)
             return true;
-        if (type.toBasetype().ty == Terror)
+        if (type.toBasetype().ty == Terror || type.toBasetype().ty == Tdefer)
             return true;
         if (!type.isscalar())
         {
