@@ -137,6 +137,8 @@ private extern(C++) final class Semantic2Visitor : Visitor
 
     override void visit(TemplateInstance tempinst)
     {
+        if (tempinst.semanticRun < PASS.semanticdone)
+            tempinst.dsymbolSemantic(sc); // FWDREF NOTE: semantic2 should get removed eventually. Calling dsymbolSemantic here is needed because TypeInstance.resolve doesn't semantic the tempinst anymore and instead just calls determineSymtab(), so semantic1 gets skipped for template instances from function bodies
         if (tempinst.semanticRun >= PASS.semantic2)
             return;
         tempinst.semanticRun = PASS.semantic2;

@@ -4961,7 +4961,7 @@ void templateInstanceSemantic(TemplateInstance tempinst, Scope* sc, Expressions*
     {
         printf("\n+TemplateInstance.dsymbolSemantic('%s', this=%p)\n", tempinst.toChars(), tempinst);
     }
-    if (tempinst.inst) // if semantic() was already run
+    if (tempinst.semanticRun >= PASS.semanticdone) // if semantic() was already run
     {
         static if (LOG)
         {
@@ -4986,6 +4986,9 @@ void templateInstanceSemantic(TemplateInstance tempinst, Scope* sc, Expressions*
         tempinst.errors = true;
         return;
     }
+
+    if (!sc)
+        sc = tempinst._scope; // FWDREF HACK for template instances that don't get semantic'd during semantic3(FuncDeclaration) anymore, the sc from semantic3 gets preserved by determineSymtab
 
     tempinst.semanticRun = PASS.semantic;
 
