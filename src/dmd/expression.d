@@ -4071,7 +4071,7 @@ extern (C++) final class ScopeExp : Expression
         {
             //assert(ti.needsTypeInference(sc));
             if (ti.tempdecl &&
-                ti.semantictiargsdone &&
+                ti.tiargsState == SemState.Done &&
                 ti.semanticRun == PASS.init)
             {
                 error("partial %s `%s` has no type", sds.kind(), toChars());

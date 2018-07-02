@@ -287,7 +287,6 @@ public:
     ScopeDsymbol *argsym;               // argument symbol table
     int inuse;                          // for recursive expansion detection
     int nest;                           // for recursive pretty printing detection
-    bool semantictiargsdone;            // has semanticTiargs() been done?
     bool havetempdecl;                  // if used second constructor
     bool gagged;                        // if the instantiation is done with error gagging
     hash_t hash;                        // cached result of toHash()
@@ -320,7 +319,7 @@ public:
     // Internal
     bool findTempDecl(Scope *sc, WithScopeSymbol **pwithsym);
     bool updateTempDecl(Scope *sc, Dsymbol *s);
-    static bool semanticTiargs(const Loc &loc, Scope *sc, Objects *tiargs, int flags);
+    static SemResult semanticTiargs(const Loc &loc, Scope *sc, Objects *tiargs, int flags);
     bool semanticTiargs(Scope *sc);
     bool findBestMatch(Scope *sc, Expressions *fargs);
     bool needsTypeInference(Scope *sc, int flag = 0);

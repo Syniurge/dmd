@@ -1090,7 +1090,6 @@ struct ASTBase
         Identifier name;
         Objects* tiargs;
         Dsymbol tempdecl;
-        bool semantictiargsdone;
         bool havetempdecl;
         TemplateInstance inst;
 
@@ -1108,7 +1107,7 @@ struct ASTBase
             this.loc = loc;
             this.name = td.ident;
             this.tempdecl = td;
-            this.semantictiargsdone = true;
+            this.tiargsState = SemState.Done;
             this.havetempdecl = true;
         }
 

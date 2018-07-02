@@ -427,8 +427,8 @@ extern (C++) Expression semanticTraits(TraitsExp e, Scope* sc)
         e.ident != Id.identifier &&
         e.ident != Id.getProtection)
     {
-        if (!TemplateInstance.semanticTiargs(e.loc, sc, e.args, 1))
-            return new ErrorExp();
+        if (auto err = TemplateInstance.semanticTiargs(e.loc, sc, e.args, 1))
+            return err == SemResult.Defer ? DeferExp.deferexp : new ErrorExp();
     }
     size_t dim = e.args ? e.args.dim : 0;
 
@@ -707,8 +707,8 @@ extern (C++) Expression semanticTraits(TraitsExp e, Scope* sc)
          * a symbol should not be folded to a constant.
          * Bit 1 means don't convert Parameter to Type if Parameter has an identifier
          */
-        if (!TemplateInstance.semanticTiargs(e.loc, sc, e.args, 2))
-            return new ErrorExp();
+        if (auto err = TemplateInstance.semanticTiargs(e.loc, sc, e.args, 2))
+            return err == SemResult.Defer ? DeferExp.deferexp : new ErrorExp();
         if (dim != 1)
             return dimError(1);
 
@@ -740,10 +740,10 @@ extern (C++) Expression semanticTraits(TraitsExp e, Scope* sc)
 
         Scope* sc2 = sc.push();
         sc2.flags = sc.flags | SCOPE.noaccesscheck;
-        bool ok = TemplateInstance.semanticTiargs(e.loc, sc2, e.args, 1);
+        auto err = TemplateInstance.semanticTiargs(e.loc, sc2, e.args, 1);
         sc2.pop();
-        if (!ok)
-            return new ErrorExp();
+        if (err)
+            return err == SemResult.Defer ? DeferExp.deferexp : new ErrorExp();
 
         auto o = (*e.args)[0];
         auto s = getDsymbolWithoutExpCtx(o);
@@ -1489,8 +1489,8 @@ extern (C++) Expression semanticTraits(TraitsExp e, Scope* sc)
         if (dim != 2)
             return dimError(2);
 
-        if (!TemplateInstance.semanticTiargs(e.loc, sc, e.args, 0))
-            return new ErrorExp();
+        if (auto err = TemplateInstance.semanticTiargs(e.loc, sc, e.args, 0))
+            return err == SemResult.Defer ? DeferExp.deferexp : new ErrorExp();
 
 
         auto o1 = (*e.args)[0];

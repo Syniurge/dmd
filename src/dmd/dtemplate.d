@@ -5959,7 +5959,6 @@ extern (C++) class TemplateInstance : ScopeDsymbol
     ScopeDsymbol argsym;        // argument symbol table
     int inuse;                  // for recursive expansion detection
     int nest;                   // for recursive pretty printing detection
-    bool semantictiargsdone;    // has semanticTiargs() been done?
     bool havetempdecl;          // if used second constructor
     bool gagged;                // if the instantiation is done with error gagging
     hash_t hash;                // cached result of toHash()
@@ -6002,7 +6001,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
         this.name = td.ident;
         this.tiargs = tiargs;
         this.tempdecl = td;
-        this.semantictiargsdone = true;
+        this.tiargsState = SemState.Done;
         this.havetempdecl = true;
         assert(tempdecl._scope);
     }
@@ -6700,13 +6699,13 @@ extern (C++) class TemplateInstance : ScopeDsymbol
      * Returns:
      *      false if one or more arguments have errors.
      */
-    static bool semanticTiargs(const ref Loc loc, Scope* sc, Objects* tiargs, int flags)
+    static SemResult semanticTiargs(const ref Loc loc, Scope* sc, Objects* tiargs, int flags)
     {
         // Run semantic on each argument, place results in tiargs[]
         //printf("+TemplateInstance.semanticTiargs()\n");
         if (!tiargs)
-            return true;
-        bool err = false;
+            return SemResult.Ok;
+        SemResult err;
         for (size_t j = 0; j < tiargs.dim; j++)
         {
             RootObject o = (*tiargs)[j];
@@ -6752,9 +6751,11 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                     j--;
                     continue;
                 }
+                if (ta.ty == Tdefer)
+                    return SemResult.Defer;
                 if (ta.ty == Terror)
                 {
-                    err = true;
+                    err = SemResult.Err;
                     continue;
                 }
                 (*tiargs)[j] = ta.merge2();
@@ -6813,9 +6814,11 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                     j--;
                     continue;
                 }
+                if (ea.op == TOKdefer)
+                    return SemResult.Defer;
                 if (ea.op == TOK.error)
                 {
-                    err = true;
+                    err = SemResult.Err;
                     continue;
                 }
                 (*tiargs)[j] = ea;
@@ -6875,7 +6878,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                 //printf("dsym %s %s\n", sa.kind(), sa.toChars());
                 if (sa.errors)
                 {
-                    err = true;
+                    err = SemResult.Err;
                     continue;
                 }
 
@@ -6931,7 +6934,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                 printf("\ttiargs[%d] = ta %p, ea %p, sa %p, va %p\n", j, ta, ea, sa, va);
             }
         }
-        return !err;
+        return err;
     }
 
     /**********************************
@@ -6947,15 +6950,17 @@ extern (C++) class TemplateInstance : ScopeDsymbol
     final bool semanticTiargs(Scope* sc)
     {
         //printf("+TemplateInstance.semanticTiargs() %s\n", toChars());
-        if (semantictiargsdone)
+        if (tiargsState == SemState.Done)
             return true;
-        if (semanticTiargs(loc, sc, tiargs, 0))
+        auto result = semanticTiargs(loc, sc, tiargs, 0);
+        if (result == SemResult.Defer)
         {
-            // cache the result iff semantic analysis succeeded entirely
-            semantictiargsdone = 1;
-            return true;
+            tiargsState = SemState.Defer;
+            return false;
         }
-        return false;
+        // cache the result iff semantic analysis succeeded entirely
+        tiargsState = SemState.Done;
+        return true;
     }
 
     final bool findBestMatch(Scope* sc, Expressions* fargs)

@@ -2565,7 +2565,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
          */
         if (!tm.findTempDecl(sc) || !tm.semanticTiargs(sc) || !tm.findBestMatch(sc, null))
         {
-            if (tm.semanticRun == PASS.init) // forward reference had occurred
+            if (tm.semanticRun == PASS.init || tm.tiargsState == SemState.Defer) // forward reference had occurred
             {
                 //printf("forward reference - deferring\n");
                 tm._scope = scx ? scx : sc.copy();

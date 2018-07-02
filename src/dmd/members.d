@@ -203,10 +203,15 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                 symtabState = inst.symtabState;
             }
 
+            void setDefer()
+            {
+                symtabState = SemState.Defer;
+            }
+
             if (inst && tempinst != inst)
                 return mirrorInst();
 
-            if (symtabState == SemState.Init)
+            if (!inst)
             {
                 if (!sc)
                     return; // FIXME? this is for deduceFunctionTemplateMatch where search() looks for parameters but the tempinst mustn't get semantic'd (parameters are already added)
@@ -240,6 +245,9 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                 */
                 if (!tempinst.findTempDecl(sc, null) || !tempinst.semanticTiargs(sc) || !tempinst.findBestMatch(sc, fargs))
                 {
+                    if (tiargsState == SemState.Defer)
+                        return setDefer();
+
                 Lerror:
                     if (tempinst.gagged)
                     {
