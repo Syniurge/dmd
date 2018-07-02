@@ -400,6 +400,9 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                 }
             }
 
+            if (inst && !members)
+                return; // HACK this is for evalStaticCondition which sets inst to get genIdent() to work... terribly UGLY..
+
             sc = tempdecl._scope; // FIXME: this isn't pretty.. but also a special case?
             super.visit(tempinst);
 
