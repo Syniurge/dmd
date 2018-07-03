@@ -268,9 +268,41 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
         this.sc = sc;
     }
 
+    private void setError()
+    {
+        result = Type.terror;
+    }
+
     void setDefer()
     {
         result = Type.tdefer;
+    }
+
+    private void setErrorOrDefer(Type t)
+    {
+        assert(t.ty == Terror || t.ty == Tdefer);
+        return t.ty == Tdefer ? setDefer() : setError();
+    }
+
+    private bool assignOrDefer(ref Type t, Type tnew)
+    {
+        if (tnew.ty == Tdefer)
+            return true;
+        t = tnew;
+        return false;
+    }
+
+    private bool assignOrDefer(ref Expression e, Expression enew)
+    {
+        if (enew.op == TOKdefer)
+            return true;
+        e = enew;
+        return false;
+    }
+
+    private bool semanticOrDefer(ref Type t)
+    {
+        return assignOrDefer(t, t.typeSemantic(loc, sc));
     }
 
     override void visit(Type t)
@@ -288,7 +320,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
     override void visit(TypeVector mtype)
     {
         uint errors = global.errors;
-        mtype.basetype = mtype.basetype.typeSemantic(loc, sc);
+        if (semanticOrDefer(mtype.basetype))
+            return setDefer();
         if (errors != global.errors)
         {
             result = Type.terror;
@@ -352,8 +385,9 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
 
         if (auto tup = s ? s.isTupleDeclaration() : null)
         {
-            mtype.dim = semanticLength(sc, tup, mtype.dim);
-            mtype.dim = mtype.dim.ctfeInterpret();
+            auto tdim = semanticLength(sc, tup, mtype.dim);
+            if (assignOrDefer(mtype.dim, tdim.ctfeInterpret()))
+                return setDefer();
             if (mtype.dim.op == TOK.error)
             {
                 result = errorReturn();
@@ -380,25 +414,23 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
         }
 
         Type tn = mtype.next.typeSemantic(loc, sc);
-        if (tn.ty == Terror)
-        {
-            result = errorReturn();
-            return;
-        }
+        if (tn.ty == Terror || tn.ty == Tdefer)
+            return setErrorOrDefer(tn);
 
         Type tbn = tn.toBasetype();
         if (mtype.dim)
         {
             uint errors = global.errors;
-            mtype.dim = semanticLength(sc, tbn, mtype.dim);
+            auto tdim = semanticLength(sc, tbn, mtype.dim);
             if (errors != global.errors)
             {
                 result = errorReturn();
                 return;
             }
 
-            mtype.dim = mtype.dim.optimize(WANTvalue);
-            mtype.dim = mtype.dim.ctfeInterpret();
+            tdim = tdim.optimize(WANTvalue);
+            if (assignOrDefer(mtype.dim, tdim.ctfeInterpret()))
+                return setDefer();
             if (mtype.dim.op == TOK.error)
             {
                 result = errorReturn();
@@ -518,6 +550,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
         case Terror:
             result = Type.terror;
             return;
+        case Tdefer:
+            return setDefer();
         default:
             break;
         }
@@ -563,7 +597,11 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
                 return;
             }
             else if (t)
+            {
+                if (t.ty == Tdefer)
+                    return setDefer();
                 mtype.index = t.typeSemantic(loc, sc);
+            }
             else
             {
                 mtype.index.error(loc, "index is not a type or an expression");
@@ -711,7 +749,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
                 }
             }
         }
-        mtype.next = mtype.next.typeSemantic(loc, sc).merge2();
+        if (assignOrDefer(mtype.next, mtype.next.typeSemantic(loc, sc).merge2()))
+            return setDefer();
         mtype.transitive();
 
         switch (mtype.next.toBasetype().ty)
@@ -754,6 +793,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
         case Terror:
             result = Type.terror;
             return;
+        case Tdefer:
+            return setDefer();
         default:
             break;
         }
@@ -789,6 +830,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
     {
         //printf("TypeReference::semantic()\n");
         Type n = mtype.next.typeSemantic(loc, sc);
+        if (n.ty == Tdefer)
+            return setDefer();
         if (n !=mtype. next)
            mtype. deco = null;
         mtype.next = n;
@@ -882,8 +925,10 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
         {
             sc = sc.push();
             sc.stc &= ~(STC.TYPECTOR | STC.FUNCATTR);
-            tf.next = tf.next.typeSemantic(loc, sc);
+            auto tn = tf.next.typeSemantic(loc, sc);
             sc = sc.pop();
+            if (assignOrDefer(tf.next, tn))
+                return setDefer();
             errors |= tf.checkRetType(loc);
             if (tf.next.isscope() && !(sc.flags & SCOPE.ctor))
             {
@@ -914,9 +959,11 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
             {
                 Parameter fparam = Parameter.getNth(tf.parameters, i);
                 tf.inuse++;
-                fparam.type = fparam.type.typeSemantic(loc, argsc);
+                auto pt = fparam.type.typeSemantic(loc, argsc);
                 if (tf.inuse == 1)
                     tf.inuse--;
+                if (assignOrDefer(fparam.type, pt))
+                    return setDefer();
                 if (fparam.type.ty == Terror)
                 {
                     errors = true;
@@ -1205,7 +1252,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
             result = mtype;
             return;
         }
-        mtype.next = mtype.next.typeSemantic(loc, sc);
+        if (semanticOrDefer(mtype.next))
+            return setDefer();
         if (mtype.next.ty != Tfunction)
         {
             result = Type.terror;
