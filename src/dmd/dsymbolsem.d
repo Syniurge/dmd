@@ -5287,9 +5287,16 @@ Laftersemantic:
 // function used to perform semantic on AliasDeclaration
 void aliasSemantic(AliasDeclaration ds, Scope* sc)
 {
+//     if (ds.aliasState == SemState.Done)
+//         return; // FWDREF FIXME (temporarily disabled to avoid altering the flow)
+    ds.aliasState = SemState.In;
+    void defer() { ds.aliasState = SemState.Defer; }
+
     //printf("AliasDeclaration::semantic() %s\n", toChars());
     if (ds.aliassym)
     {
+        ds.aliasState = SemState.Done;
+
         auto fd = ds.aliassym.isFuncLiteralDeclaration();
         auto td = ds.aliassym.isTemplateDeclaration();
         if (fd || td && td.literal)
@@ -5317,6 +5324,7 @@ void aliasSemantic(AliasDeclaration ds, Scope* sc)
         return;
     }
     ds.inuse = 1;
+    scope(exit) ds.inuse = 0;
 
     // Given:
     //  alias foo.bar.abc def;
@@ -5357,6 +5365,7 @@ void aliasSemantic(AliasDeclaration ds, Scope* sc)
      *   alias y = x;
      * try to convert identifier x to 3.
      */
+        bool oldConfidenceBoost = Scope.confidenceBoost;
     auto s = ds.type.toDsymbol(sc);
     if (errors != global.errors)
     {
@@ -5371,6 +5380,8 @@ void aliasSemantic(AliasDeclaration ds, Scope* sc)
     }
     if (!s || !s.isEnumMember())
     {
+            if (oldConfidenceBoost) // FWDREF HACK FIXME no idea yet how to handle "retries" properly
+                Scope.confidenceBoost = true;
         Type t;
         Expression e;
         Scope* sc2 = sc;
@@ -5396,6 +5407,8 @@ void aliasSemantic(AliasDeclaration ds, Scope* sc)
                 t = Type.terror;
             }
         }
+        if (t && t.ty == Tdefer)
+            return defer();
         ds.type = t;
     }
     if (s == ds)
@@ -5421,7 +5434,6 @@ void aliasSemantic(AliasDeclaration ds, Scope* sc)
         ds.type = oldtype;
         ds.aliassym = null;
     }
-    ds.inuse = 0;
     ds.semanticRun = PASS.semanticdone;
 
     if (auto sx = ds.overnext)
@@ -5430,4 +5442,6 @@ void aliasSemantic(AliasDeclaration ds, Scope* sc)
         if (!ds.overloadInsert(sx))
             ScopeDsymbol.multiplyDefined(Loc.initial, sx, ds);
     }
+
+    ds.aliasState = SemState.Done;
 }
