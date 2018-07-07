@@ -826,6 +826,10 @@ extern (C++) final class AliasDeclaration : Declaration
 
     override Type getType()
     {
+        if (_scope && aliasState != SemState.Done)
+            aliasSemantic(this, _scope);
+        if (aliasState == SemState.Defer)
+            return Type.tdefer;
         if (type)
             return type;
         return toAlias().getType();
