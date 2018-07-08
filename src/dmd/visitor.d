@@ -30,6 +30,7 @@ extern (C++) class Visitor : ParseTimeVisitor!ASTCodegen
     alias visit = ParseTimeVisitor!ASTCodegen.visit;
 public:
     void visit(ASTCodegen.ErrorStatement s) { visit(cast(ASTCodegen.Statement)s); }
+    void visit(ASTCodegen.DeferStatement s) { visit(cast(ASTCodegen.Statement)s); }
     void visit(ASTCodegen.PeelStatement s) { visit(cast(ASTCodegen.Statement)s); }
     void visit(ASTCodegen.UnrolledLoopStatement s) { visit(cast(ASTCodegen.Statement)s); }
     void visit(ASTCodegen.SwitchErrorStatement s) { visit(cast(ASTCodegen.Statement)s); }

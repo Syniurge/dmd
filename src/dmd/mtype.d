@@ -905,6 +905,7 @@ extern (C++) abstract class Type : RootObject
         terror = basic[Terror];
         tdefer = basic[Tdefer];
         DeferExp.deferexp = new DeferExp; // FWDREF FIXME/NOTE: relies on tdefer, so where should this go?
+        import dmd.statement; DeferStatement.deferstmt = new DeferStatement;
         tnull = basic[Tnull];
         tnull = new TypeNull();
         tnull.deco = tnull.merge().deco;

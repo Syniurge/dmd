@@ -35,6 +35,7 @@ class Condition;
 class Module;
 struct Token;
 class ErrorStatement;
+class DeferStatement;
 class ReturnStatement;
 class CompoundStatement;
 class Parameter;
@@ -96,6 +97,7 @@ public:
 
     // Avoid dynamic_cast
     virtual ErrorStatement *isErrorStatement() { return NULL; }
+    virtual DeferStatement *isDeferStatement() { return NULL; }
     virtual ScopeStatement *isScopeStatement() { return NULL; }
     virtual ExpStatement *isExpStatement() { return NULL; }
     virtual CompoundStatement *isCompoundStatement() { return NULL; }
@@ -121,6 +123,15 @@ public:
     Statement *syntaxCopy();
 
     ErrorStatement *isErrorStatement() { return this; }
+    void accept(Visitor *v) { v->visit(this); }
+};
+
+class DeferStatement : public Statement
+{
+public:
+    Statement *syntaxCopy();
+
+    DeferStatement *isDeferStatement() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
 

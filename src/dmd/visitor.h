@@ -14,6 +14,7 @@
 
 class Statement;
 class ErrorStatement;
+class DeferStatement;
 class PeelStatement;
 class ExpStatement;
 class DtorExpStatement;
@@ -571,6 +572,7 @@ public:
 
     // Miscellaneous
     virtual void visit(ErrorStatement *s) { visit((Statement *)s); }
+    virtual void visit(DeferStatement *s) { visit((Statement *)s); }
     virtual void visit(PeelStatement *s) { visit((Statement *)s); }
     virtual void visit(UnrolledLoopStatement *s) { visit((Statement *)s); }
     virtual void visit(SwitchErrorStatement *s) { visit((Statement *)s); }
