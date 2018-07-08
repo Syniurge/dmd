@@ -1468,7 +1468,11 @@ extern (C++) final class ConditionalStatement : Statement
                 s = ifbody;
         }
         else
+        {
+            if (condition.isDeferred())
+                return null;
             s = elsebody;
+        }
 
         auto a = new Statements();
         a.push(s);

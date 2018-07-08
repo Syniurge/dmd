@@ -145,6 +145,11 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         result = new ErrorStatement();
     }
 
+    private void setDefer()
+    {
+        result = new DeferStatement();
+    }
+
     override void visit(Statement s)
     {
         result = s;
@@ -234,6 +239,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
                     continue;
                 }
                 s = s.statementSemantic(sc);
+                if (s.isDeferStatement())
+                    return setDefer();
                 (*cs.statements)[i] = s;
                 if (s)
                 {
@@ -2224,6 +2231,8 @@ else
         }
         else
         {
+            if (cs.condition.isDeferred())
+                return setDefer();
             if (cs.elsebody)
                 cs.elsebody = cs.elsebody.statementSemantic(sc);
             result = cs.elsebody;
