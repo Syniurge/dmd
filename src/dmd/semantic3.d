@@ -318,6 +318,7 @@ private extern(C++) final class Semantic3Visitor : Visitor
             ss.loc = funcdecl.loc;
             ss.endlinnum = funcdecl.endloc.linnum;
             Scope* sc2 = sc.push(ss);
+            scope(exit) sc2.pop();
             sc2.func = funcdecl;
             sc2.parent = funcdecl;
             sc2.ctorflow.callSuper = CSX.none;
@@ -559,6 +560,7 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 sym.loc = funcdecl.loc;
                 sym.endlinnum = funcdecl.endloc.linnum;
                 sc2 = sc2.push(sym);
+                scope(exit) sc2 = sc2.pop();
 
                 auto ad2 = funcdecl.isMember2();
 
@@ -578,7 +580,14 @@ private extern(C++) final class Semantic3Visitor : Visitor
 
                 bool inferRef = (f.isref && (funcdecl.storage_class & STC.auto_));
 
-                funcdecl.fbody = funcdecl.fbody.statementSemantic(sc2);
+                auto fnbody = funcdecl.fbody.statementSemantic(sc2);
+                if (fnbody.isDeferStatement())
+                {
+                    funcdecl.bodyState = SemState.Defer; // FWDREF TODO semantic3 should disappear, and this should go into a new method called bodySemantic()
+                    sc.instantiatingModule().addDeferredSemantic3(funcdecl);
+                    return;
+                }
+                funcdecl.fbody = fnbody;
                 if (!funcdecl.fbody)
                     funcdecl.fbody = new CompoundStatement(Loc.initial, new Statements());
 
@@ -879,8 +888,6 @@ private extern(C++) final class Semantic3Visitor : Visitor
                     nw.sc = sc2;
                     nw.visitStmt(funcdecl.fbody);
                 }
-
-                sc2 = sc2.pop();
             }
 
             funcdecl.frequire = funcdecl.mergeFrequire(funcdecl.frequire);
@@ -1131,7 +1138,6 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 funcdecl.error("naked assembly functions with contracts are not supported");
 
             sc2.ctorflow.callSuper = CSX.none;
-            sc2.pop();
         }
 
         if (funcdecl.checkClosure())
