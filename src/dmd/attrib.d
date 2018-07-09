@@ -117,12 +117,11 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
         if (addMemberState == SemState.Done)
             return;
 
-        void defer() { addMemberState = SemState.Defer; }
-
-//         if (addMemberState == SemState.Init)
-//             setScope(sc);
+        if (addMemberState == SemState.Init)
+            setScope(sc);
 
         addMemberState = SemState.In;
+        void defer() { addMemberState = SemState.Defer; }
 
         Dsymbols* d = include(sc);
         if (includeState != SemState.Done)
@@ -135,10 +134,7 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
             {
                 Dsymbol s = (*d)[i];
                 //printf("\taddMember %s to %s\n", s.toChars(), sds.toChars());
-                if (s.addMemberState == SemState.Done)
-                    continue; // FIXME this is temporary to avoid extra setScope calls
                 s.addMember(sc2, sds);
-                s.setScope(sc2); // FWDREF FIXME: should go into addMember
                 if (s.addMemberState == SemState.Defer)
                     defer();
             }
@@ -148,23 +144,6 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
 
         if (addMemberState != SemState.Defer)
             addMemberState = SemState.Done;
-    }
-
-    override void setScope(Scope* sc)
-    {
-        Dsymbols* d = include(sc);
-        //printf("\tAttribDeclaration::setScope '%s', d = %p\n",toChars(), d);
-        if (d)
-        {
-            Scope* sc2 = newScope(sc);
-            for (size_t i = 0; i < d.dim; i++)
-            {
-                Dsymbol s = (*d)[i];
-                s.setScope(sc2);
-            }
-            if (sc2 != sc)
-                sc2.pop();
-        }
     }
 
     override void importAll(Scope* sc)
@@ -389,7 +368,6 @@ extern (C++) class StorageClassDeclaration : AttribDeclaration
                 s.addMember(sc2, sds);
                 if (s.addMemberState == SemState.Defer)
                     addMemberState = SemState.Defer;
-                s.setScope(sc2); // FWDREF FIXME: should go into addMember
             }
             if (sc2 != sc)
                 sc2.pop();
@@ -446,14 +424,6 @@ extern (C++) final class DeprecatedDeclaration : StorageClassDeclaration
             scx = sc.push();
         scx.depdecl = this;
         return scx;
-    }
-
-    override void setScope(Scope* sc)
-    {
-        //printf("DeprecatedDeclaration::setScope() %p\n", this);
-        if (decl)
-            Dsymbol.setScope(sc); // for forward reference
-        return AttribDeclaration.setScope(sc);
     }
 
     override void accept(Visitor v)
@@ -694,13 +664,6 @@ extern (C++) final class AnonDeclaration : AttribDeclaration
     {
         assert(!s);
         return new AnonDeclaration(loc, isunion, Dsymbol.arraySyntaxCopy(decl));
-    }
-
-    override void setScope(Scope* sc)
-    {
-        if (decl)
-            Dsymbol.setScope(sc);
-        return AttribDeclaration.setScope(sc);
     }
 
     override void setFieldOffset(AggregateDeclaration ad, uint* poffset, bool isunion)
@@ -944,20 +907,6 @@ extern (C++) class ConditionalDeclaration : AttribDeclaration
         }
     }
 
-    override void setScope(Scope* sc)
-    {
-        Dsymbols* d = include(sc);
-        //printf("\tConditionalDeclaration::setScope '%s', d = %p\n",toChars(), d);
-        if (d)
-        {
-            for (size_t i = 0; i < d.dim; i++)
-            {
-                Dsymbol s = (*d)[i];
-                s.setScope(sc);
-            }
-        }
-    }
-
     override void accept(Visitor v)
     {
         v.visit(this);
@@ -1066,12 +1015,6 @@ extern (C++) final class StaticForeachDeclaration : AttribDeclaration
                 Dsymbol s = (*d)[i];
                 s.addMember(_scope, scopesym);
             }
-            // Set the member scopes lazily.
-            for (size_t i = 0; i < d.dim; i++)
-            {
-                Dsymbol s = (*d)[i];
-                s.setScope(_scope);
-            }
         }
         cached = true;
         cache = d;
@@ -1090,13 +1033,6 @@ extern (C++) final class StaticForeachDeclaration : AttribDeclaration
     {
         // do nothing
         // change this to give semantics to documentation comments on static foreach declarations
-    }
-
-    override void setScope(Scope* sc)
-    {
-        // do not evaluate condition before semantic pass
-        // But do set the scope, in case we need it for forward referencing
-        Dsymbol.setScope(sc);
     }
 
     override void importAll(Scope* sc)
@@ -1208,11 +1144,6 @@ extern (C++) final class CompileDeclaration : AttribDeclaration
         this.scopesym = sds;
     }
 
-    override void setScope(Scope* sc)
-    {
-        Dsymbol.setScope(sc);
-    }
-
     override const(char)* kind() const
     {
         return "mixin";
@@ -1258,14 +1189,6 @@ extern (C++) final class UserAttributeDeclaration : AttribDeclaration
         return sc2;
     }
 
-    override void setScope(Scope* sc)
-    {
-        //printf("UserAttributeDeclaration::setScope() %p\n", this);
-        if (decl)
-            Dsymbol.setScope(sc); // for forward reference of UDAs
-        return AttribDeclaration.setScope(sc);
-    }
-
     static Expressions* concat(Expressions* udas1, Expressions* udas2)
     {
         Expressions* udas;
@@ -1287,7 +1210,7 @@ extern (C++) final class UserAttributeDeclaration : AttribDeclaration
 
     Expressions* getAttributes()
     {
-        if (auto sc = _scope)
+        if (auto sc = _scope) // FWDREF FIXME
         {
             _scope = null;
             arrayExpressionSemantic(atts, sc);

@@ -1017,15 +1017,22 @@ extern (C++) final class Module : Package
          * gets imported, it is unaffected by context.
          */
         if (!_scope)
-           setScope(Scope.createGlobal(this)); // create root scope
+            setScope(Scope.createGlobal(this)); // create root scope
         return _scope;
+    }
+
+    override void setScope(Scope *sc)
+    {
+        // sc may be null if setScope gets called from Scope.createGlobal
+        if (sc)
+            super.setScope(sc);
     }
 
     override void importAll(Scope* prevsc)
     {
         //printf("+Module::importAll(this = %p, '%s'): parent = %p\n", this, toChars(), parent);
-        if (_scope)
-            return; // already done // FWDREF FIXME this is dangerous stuff and should go
+        if (tiargsState == SemState.Done) // FWDREF FIXME this temporarily replaces a ._scope check
+            return; // already done
         if (isDocFile)
         {
             error("is a Ddoc file, cannot import it");
@@ -1046,6 +1053,8 @@ extern (C++) final class Module : Package
             Dsymbol s = (*members)[i];
             s.importAll(_scope);
         }
+
+        tiargsState = SemState.Done; // FWDREF FIXME temporary
     }
 
     /**********************************

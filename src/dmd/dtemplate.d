@@ -7523,12 +7523,6 @@ extern (C++) class TemplateInstance : ScopeDsymbol
         for (size_t i = 0; i < members.dim; i++)
         {
             Dsymbol s = (*members)[i];
-            s.setScope(sc2);
-        }
-
-        for (size_t i = 0; i < members.dim; i++)
-        {
-            Dsymbol s = (*members)[i];
             s.importAll(sc2);
         }
 

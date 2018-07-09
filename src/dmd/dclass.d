@@ -1184,23 +1184,14 @@ extern (C++) void determineBaseClasses(ClassDeclaration cldec, Scope* sc, Scope*
             */
         T resolveBase(T)(lazy T exp)
         {
-            if (!scx)
-            {
-                scx = sc.copy();
-                scx.setNoFree();
-            }
             static if (!is(T == void))
             {
-                cldec._scope = scx;
                 auto r = exp();
-                cldec._scope = null;
                 return r;
             }
             else
             {
-                cldec._scope = scx;
                 exp();
-                cldec._scope = null;
             }
         }
 
@@ -1368,8 +1359,6 @@ extern (C++) void determineBaseClasses(ClassDeclaration cldec, Scope* sc, Scope*
         if (cldec.baseok == Baseok.none)
         {
             // Forward referencee of one or more bases, try again later
-            cldec._scope = scx ? scx : sc.copy();
-            cldec._scope.setNoFree();
             cldec._scope._module.addDeferredSemantic(cldec);
             //printf("\tL%d semantic('%s') failed due to forward references\n", __LINE__, toChars());
             return;

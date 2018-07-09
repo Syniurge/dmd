@@ -411,7 +411,7 @@ const(char)* getMessage(DeprecatedDeclaration dd)
 {
     if (auto sc = dd._scope)
     {
-        dd._scope = null;
+        dd._scope = null; // FWDREF FIXME? (looks harmless, but bad)
 
         sc = sc.startCTFE();
         dd.msg = dd.msg.expressionSemantic(sc);
@@ -474,10 +474,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             return;
 
         if (dsym._scope)
-        {
             sc = dsym._scope;
-            dsym._scope = null;
-        }
 
         if (!sc)
             return;
@@ -575,13 +572,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (dsym.semanticRun >= PASS.semanticdone)
             return;
 
-        Scope* scx = null;
         if (dsym._scope)
-        {
             sc = dsym._scope;
-            scx = sc;
-            dsym._scope = null;
-        }
 
         if (!sc)
             return;
@@ -603,8 +595,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         void defer()
         {
-            dsym._scope = scx ? scx : sc.copy();
-            dsym._scope.setNoFree();
             dsym._scope._module.addDeferredSemantic(dsym);
         }
 
@@ -1240,8 +1230,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             }
             else if (parent.isAggregateDeclaration())
             {
-                dsym._scope = scx ? scx : sc.copy();
-                dsym._scope.setNoFree();
             }
             else if (dsym.storage_class & (STC.const_ | STC.immutable_ | STC.manifest) || dsym.type.isConst() || dsym.type.isImmutable())
             {
@@ -1310,8 +1298,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 }
                 else
                 {
-                    dsym._scope = scx ? scx : sc.copy();
-                    dsym._scope.setNoFree();
                 }
             }
         }
@@ -1377,10 +1363,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             return;
 
         if (imp._scope)
-        {
             sc = imp._scope;
-            imp._scope = null;
-        }
         if (!sc)
             return;
 
@@ -1908,15 +1891,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             cd.decl = compileIt(cd);
             cd.AttribDeclaration.addMember(sc, cd.scopesym);
             cd.compiled = true;
-
-            if (cd._scope && cd.decl)
-            {
-                for (size_t i = 0; i < cd.decl.dim; i++)
-                {
-                    Dsymbol s = (*cd.decl)[i];
-                    s.setScope(cd._scope);
-                }
-            }
         }
         attribSemantic(cd);
     }
@@ -1925,7 +1899,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
     {
         //printf("UserAttributeDeclaration::semantic() %p\n", this);
         if (uad.decl && !uad._scope)
-            uad.Dsymbol.setScope(sc); // for function local symbols
+            uad.Dsymbol.setScope(sc); // for function local symbols // FWDREF FIXME special case that shouldn't be
         return attribSemantic(uad);
     }
 
@@ -2006,13 +1980,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         }
         uint dprogress_save = Module.dprogress;
 
-        Scope* scx = null;
         if (ed._scope)
-        {
             sc = ed._scope;
-            scx = ed._scope; // save so we don't make redundant copies
-            ed._scope = null;
-        }
 
         if (!sc)
             return;
@@ -2054,8 +2023,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 if (!sym.memtype || !sym.members || !sym.symtab || sym._scope)
                 {
                     // memtype is forward referenced, so try again later
-                    ed._scope = scx ? scx : sc.copy();
-                    ed._scope.setNoFree();
                     ed._scope._module.addDeferredSemantic(ed);
                     Module.dprogress = dprogress_save;
                     //printf("\tdeferring %s\n", toChars());
@@ -2409,10 +2376,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             return; // semantic() already run
 
         if (tempdecl._scope)
-        {
             sc = tempdecl._scope;
-            tempdecl._scope = null;
-        }
+        assert(sc); // FWDREF FIXME trying to figure out when sc would be null
         if (!sc)
             return;
 
@@ -2423,20 +2388,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 Type.rtinfo = tempdecl;
         }
 
-        /* Remember Scope for later instantiations, but make
-         * a copy since attributes can change.
-         */
-        if (!tempdecl._scope)
-        {
-            tempdecl._scope = sc.copy();
-            tempdecl._scope.setNoFree();
-        }
-
         tempdecl.semanticRun = PASS.semantic;
 
         tempdecl.parent = sc.parent;
         tempdecl.protection = sc.protection;
-        tempdecl.isstatic = tempdecl.toParent().isModule() || (tempdecl._scope.stc & STC.static_);
+        tempdecl.isstatic = tempdecl.toParent().isModule() || (sc.stc & STC.static_);
 
         if (!tempdecl.isstatic)
         {
@@ -2561,13 +2517,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             printf("\tdo semantic\n");
         }
 
-        Scope* scx = null;
         if (tm._scope)
-        {
             sc = tm._scope;
-            scx = tm._scope; // save so we don't make redundant copies
-            tm._scope = null;
-        }
 
         /* Run semantic on each argument, place results in tiargs[],
          * then find best match template with tiargs
@@ -2577,8 +2528,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             if (tm.semanticRun == PASS.init || tm.tiargsState == SemState.Defer) // forward reference had occurred
             {
                 //printf("forward reference - deferring\n");
-                tm._scope = scx ? scx : sc.copy();
-                tm._scope.setNoFree();
                 tm._scope._module.addDeferredSemantic(tm);
                 return;
             }
@@ -2788,10 +2737,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             printf("+Nspace::semantic('%s')\n", ns.toChars());
         }
         if (ns._scope)
-        {
             sc = ns._scope;
-            ns._scope = null;
-        }
         if (!sc)
             return;
 
@@ -2855,10 +2801,9 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         funcdecl.semanticRun = PASS.semantic;
 
         if (funcdecl._scope)
-        {
             sc = funcdecl._scope;
-            funcdecl._scope = null;
-        }
+
+            assert(sc); // FWDREF FIXME temporary
 
         if (!sc || funcdecl.errors)
             return;
@@ -3569,12 +3514,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         Module.dprogress++;
         funcdecl.semanticRun = PASS.semanticdone;
 
-        /* Save scope for possible later use (if we need the
-         * function internals)
-         */
-        funcdecl._scope = sc.copy();
-        funcdecl._scope.setNoFree();
-
         static __gshared bool printedMain = false; // semantic might run more than once
         if (global.params.verbose && !printedMain)
         {
@@ -3607,10 +3546,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (ctd.semanticRun >= PASS.semanticdone)
             return;
         if (ctd._scope)
-        {
             sc = ctd._scope;
-            ctd._scope = null;
-        }
 
         ctd.parent = sc.parent;
         Dsymbol p = ctd.toParent2();
@@ -3700,10 +3636,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (pbd.semanticRun >= PASS.semanticdone)
             return;
         if (pbd._scope)
-        {
             sc = pbd._scope;
-            pbd._scope = null;
-        }
 
         pbd.parent = sc.parent;
         Dsymbol p = pbd.toParent2();
@@ -3736,10 +3669,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (dd.semanticRun >= PASS.semanticdone)
             return;
         if (dd._scope)
-        {
             sc = dd._scope;
-            dd._scope = null;
-        }
 
         dd.parent = sc.parent;
         Dsymbol p = dd.toParent2();
@@ -3772,10 +3702,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (scd.semanticRun >= PASS.semanticdone)
             return;
         if (scd._scope)
-        {
             sc = scd._scope;
-            scd._scope = null;
-        }
 
         scd.parent = sc.parent;
         Dsymbol p = scd.parent.pastMixin();
@@ -3839,10 +3766,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (sdd.semanticRun >= PASS.semanticdone)
             return;
         if (sdd._scope)
-        {
             sc = sdd._scope;
-            sdd._scope = null;
-        }
 
         sdd.parent = sc.parent;
         Dsymbol p = sdd.parent.pastMixin();
@@ -3909,10 +3833,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (invd.semanticRun >= PASS.semanticdone)
             return;
         if (invd._scope)
-        {
             sc = invd._scope;
-            invd._scope = null;
-        }
 
         invd.parent = sc.parent;
         Dsymbol p = invd.parent.pastMixin();
@@ -3948,10 +3869,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (utd.semanticRun >= PASS.semanticdone)
             return;
         if (utd._scope)
-        {
             sc = utd._scope;
-            utd._scope = null;
-        }
 
         utd.protection = sc.protection;
 
@@ -4007,10 +3925,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (nd.semanticRun >= PASS.semanticdone)
             return;
         if (nd._scope)
-        {
             sc = nd._scope;
-            nd._scope = null;
-        }
 
         nd.parent = sc.parent;
         Dsymbol p = nd.parent.pastMixin();
@@ -4058,10 +3973,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (deld.semanticRun >= PASS.semanticdone)
             return;
         if (deld._scope)
-        {
             sc = deld._scope;
-            deld._scope = null;
-        }
 
         deld.parent = sc.parent;
         Dsymbol p = deld.parent.pastMixin();
@@ -4104,14 +4016,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         int errors = global.errors;
 
         //printf("+StructDeclaration::semantic(this=%p, '%s', sizeok = %d)\n", this, toPrettyChars(), sizeok);
-        Scope* scx = null;
-        if (sd._scope) // FWDREF FIXME
-        {
-            sc = sd._scope;
-            scx = sd._scope; // save so we don't make redundant copies
-            sd._scope = null;
-        }
-        sd.semScope = sc;
+        if (sd._scope)
+            sc = sd._scope; // FWDREF NOTE/FIXME: sc is superfluous
 
         if (!sd.parent)
         {
@@ -4149,7 +4055,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
             sd.userAttribDecl = sc.userAttribDecl;
         }
-        else if (sd.symtab && !scx)
+        else if (sd.symtab && !sd._scope) // FWDREF FIXME? it was "&& !scx)" before, this check was probably to avoid here recursive semantic calls?
             return;
 
         sd.semanticRun = PASS.semantic;
@@ -4162,8 +4068,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         void defer()
         {
-            sd._scope = scx ? scx : sc.copy();
-            sd._scope.setNoFree();
             sd._scope._module.addDeferredSemantic(sd);
         }
 
@@ -4211,8 +4115,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
             sc2.pop();
 
-            sd._scope = scx ? scx : sc.copy();
-            sd._scope.setNoFree();
             sd._scope._module.addDeferredSemantic(sd);
             //printf("\tdeferring %s\n", toChars());
             return;
@@ -4319,14 +4221,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         //printf("+ClassDeclaration.dsymbolSemantic(%s), type = %p, sizeok = %d, this = %p\n", toChars(), type, sizeok, this);
 
-        Scope* scx = null;
         if (cldec._scope)
-        {
             sc = cldec._scope;
-            scx = cldec._scope; // save so we don't make redundant copies
-            cldec._scope = null;
-        }
-        cldec.semScope = sc;
 
         if (!cldec.parent)
         {
@@ -4368,14 +4264,14 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             if (sc.linkage == LINK.objc)
                 objc.setObjc(cldec);
         }
-        else if (cldec.symtab && !scx)
+        else if (cldec.symtab && !cldec._scope) // FWDREF FIXME?
         {
             cldec.semanticRun = PASS.semanticdone;
             return;
         }
         cldec.semanticRun = PASS.semantic;
 
-        determineBaseClasses(cldec, sc, scx);
+        determineBaseClasses(cldec, sc, cldec._scope);
 
         if (cldec.semanticRun >= PASS.semanticdone || cldec.baseok == Baseok.none) // FWDREF FIXME temporary?
             return;
@@ -4390,8 +4286,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         void defer()
         {
-            cldec._scope = scx ? scx : sc.copy();
-            cldec._scope.setNoFree();
             cldec._scope._module.addDeferredSemantic(cldec);
         }
 
@@ -4509,8 +4403,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
             sc2.pop();
 
-            cldec._scope = scx ? scx : sc.copy();
-            cldec._scope.setNoFree();
             cldec._scope._module.addDeferredSemantic(cldec);
             //printf("\tdeferring %s\n", toChars());
             return;
@@ -4655,14 +4547,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         //printf("+InterfaceDeclaration.dsymbolSemantic(%s), type = %p\n", toChars(), type);
 
-        Scope* scx = null;
         if (idec._scope)
-        {
             sc = idec._scope;
-            scx = idec._scope; // save so we don't make redundant copies
-            idec._scope = null;
-        }
-        idec.semScope = sc;
 
         if (!idec.parent)
         {
@@ -4696,7 +4582,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         }
         else if (idec.symtab)
         {
-            if (idec.sizeok == Sizeok.done || !scx)
+            if (idec.sizeok == Sizeok.done || !idec._scope) // FWDREF FIXME?
             {
                 idec.semanticRun = PASS.semanticdone;
                 return;
@@ -4708,23 +4594,14 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         {
             T resolveBase(T)(lazy T exp)
             {
-                if (!scx)
-                {
-                    scx = sc.copy();
-                    scx.setNoFree();
-                }
                 static if (!is(T == void))
                 {
-                    idec._scope = scx;
                     auto r = exp();
-                    idec._scope = null;
                     return r;
                 }
                 else
                 {
-                    idec._scope = scx;
                     exp();
-                    idec._scope = null;
                 }
             }
 
@@ -4824,8 +4701,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             if (idec.baseok == Baseok.none)
             {
                 // Forward referencee of one or more bases, try again later
-                idec._scope = scx ? scx : sc.copy();
-                idec._scope.setNoFree();
                 idec._scope._module.addDeferredSemantic(idec);
                 return;
             }
@@ -4861,8 +4736,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             if (tc.sym.semanticRun < PASS.semanticdone)
             {
                 // Forward referencee of one or more bases, try again later
-                idec._scope = scx ? scx : sc.copy();
-                idec._scope.setNoFree();
                 if (tc.sym._scope)
                     tc.sym._scope._module.addDeferredSemantic(tc.sym);
                 idec._scope._module.addDeferredSemantic(idec);
@@ -4997,7 +4870,7 @@ void templateInstanceSemantic(TemplateInstance tempinst, Scope* sc, Expressions*
     }
 
     if (!sc)
-        sc = tempinst._scope; // FWDREF HACK for template instances that don't get semantic'd during semantic3(FuncDeclaration) anymore, the sc from semantic3 gets preserved by determineSymtab
+        sc = tempinst._scope;
 
     tempinst.semanticRun = PASS.semantic;
 

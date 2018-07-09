@@ -260,6 +260,8 @@ extern (C++) final class Import : Dsymbol
             aliasdecls.push(ad);
         }
 
+        setScope(sc);
+
         if (addMemberState != SemState.Defer)
             addMemberState = SemState.Done;
     }
@@ -287,7 +289,7 @@ extern (C++) final class Import : Dsymbol
         if (!pkg)
         {
             if (_scope)
-                importAll(_scope); // FWDREF FIXME will probably become useful when ImportStatement.semantic will call setScope
+                importAll(_scope); // FWDREF FIXME should become the only path once setScope gets called during semantic3(FuncDeclaration)
             else
             {
             load(null);

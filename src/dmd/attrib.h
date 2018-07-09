@@ -39,7 +39,6 @@ public:
         int explicitProtection, AlignDeclaration *aligndecl, PINLINE inlining);
     virtual Scope *newScope(Scope *sc);
     void addMember(Scope *sc, ScopeDsymbol *sds);
-    void setScope(Scope *sc);
     void importAll(Scope *sc);
     void addComment(const utf8_t *comment);
     const char *kind() const;
@@ -76,7 +75,6 @@ public:
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
-    void setScope(Scope *sc);
     const char *getMessage();
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -141,7 +139,6 @@ public:
     unsigned anonalignsize;     // size of anonymous struct for alignment purposes
 
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void setScope(Scope *sc);
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     const char *kind() const;
     AnonDeclaration *isAnonDeclaration() { return this; }
@@ -169,7 +166,6 @@ public:
     bool oneMember(Dsymbol **ps, Identifier *ident);
     Dsymbols *include(Scope *sc);
     void addComment(const utf8_t *comment);
-    void setScope(Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
 
@@ -194,7 +190,6 @@ public:
     Dsymbols *include(Scope *sc);
     void addMember(Scope *sc, ScopeDsymbol *sds);
     void addComment(const utf8_t *comment);
-    void setScope(Scope *sc);
     void importAll(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
@@ -222,7 +217,6 @@ public:
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     void addMember(Scope *sc, ScopeDsymbol *sds);
-    void setScope(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
@@ -238,7 +232,6 @@ public:
 
     Dsymbol *syntaxCopy(Dsymbol *s);
     Scope *newScope(Scope *sc);
-    void setScope(Scope *sc);
     static Expressions *concat(Expressions *udas1, Expressions *udas2);
     Expressions *getAttributes();
     const char *kind() const;

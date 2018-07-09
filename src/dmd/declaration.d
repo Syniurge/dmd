@@ -1467,7 +1467,6 @@ extern (C++) class VarDeclaration : Declaration
         {
             inuse++;
             auto vinit = _init.initializerSemantic(_scope, type, INITinterpret);
-            _scope = null; // FWDREF FIXME??
             inuse--;
             if (vinit.isDeferInitializer())
                 return DeferExp.deferexp;

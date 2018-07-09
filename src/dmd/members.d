@@ -128,10 +128,7 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                     while (nextMember < members.dim)
                     {
                         auto s = (*members)[nextMember++];
-                        if (s.addMemberState == SemState.Done)
-                            continue; // FIXME this is temporary to avoid extra setScope calls
                         s.addMember(sc2, sc2.scopesym);
-                        s.setScope(sc2); // FIXME: should go into addMember
                         if (s.addMemberState == SemState.Defer)
                             numDeferredMembers++;
                     }
@@ -216,13 +213,8 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                 if (!sc)
                     return; // FIXME? this is for deduceFunctionTemplateMatch where search() looks for parameters but the tempinst mustn't get semantic'd (parameters are already added)
 
-                if (sc.func) // HACK temporary, we need the scope saved for later dsymbolSemantic(), but ideally setScope() should be called for every symbol
-                {
-                    assert(!_scope);
-                    if (!sc.nofree)
-                        sc.setNoFree(); // (current setScope() also set userAttribDecl, which might be incorrect)
-                    _scope = sc;
-                }
+                if (!_scope)
+                    setScope(sc);
 
                 // Get the enclosing template instance from the scope tinst
                 tinst = sc.tinst;

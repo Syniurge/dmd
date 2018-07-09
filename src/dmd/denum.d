@@ -142,7 +142,7 @@ extern (C++) final class EnumDeclaration : ScopeDsymbol
             dsymbolSemantic(this, _scope);
         }
 
-        if (!members || !symtab || _scope)
+        if (!members || !symtab || semanticRun < PASS.semanticdone)
         {
             error("is forward referenced when looking for `%s`", ident.toChars());
             //*(char*)0=0;

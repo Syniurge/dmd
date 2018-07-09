@@ -630,6 +630,8 @@ extern (C++) class Dsymbol : RootObject
         if (addMemberState == SemState.Done)
             return;
 
+        setScope(sc);
+
         parent = sds;
         if (!isAnonymous()) // no name, so can't add it to symbol table
         {

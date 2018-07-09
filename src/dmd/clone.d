@@ -537,6 +537,7 @@ extern (C++) FuncDeclaration buildXopEquals(StructDeclaration sd, Scope* sc)
     Scope* sc2 = sc.push();
     sc2.stc = 0;
     sc2.linkage = LINK.d;
+    fop.setScope(sc2);
     fop.dsymbolSemantic(sc2);
     fop.semantic2(sc2);
     sc2.pop();
@@ -657,6 +658,7 @@ extern (C++) FuncDeclaration buildXopCmp(StructDeclaration sd, Scope* sc)
     Scope* sc2 = sc.push();
     sc2.stc = 0;
     sc2.linkage = LINK.d;
+    fop.setScope(sc2);
     fop.dsymbolSemantic(sc2);
     fop.semantic2(sc2);
     sc2.pop();
@@ -771,6 +773,7 @@ extern (C++) FuncDeclaration buildXtoHash(StructDeclaration sd, Scope* sc)
     Scope* sc2 = sc.push();
     sc2.stc = 0;
     sc2.linkage = LINK.d;
+    fop.setScope(sc2);
     fop.dsymbolSemantic(sc2);
     fop.semantic2(sc2);
     sc2.pop();
@@ -887,6 +890,7 @@ extern (C++) FuncDeclaration buildDtor(AggregateDeclaration ad, Scope* sc)
         dd.fbody = new ExpStatement(loc, e);
         ad.dtors.shift(dd);
         ad.members.push(dd);
+        dd.setScope(sc);
         dd.dsymbolSemantic(sc);
     }
 
@@ -922,6 +926,7 @@ extern (C++) FuncDeclaration buildDtor(AggregateDeclaration ad, Scope* sc)
         dd.storage_class |= STC.inference;
         dd.fbody = new ExpStatement(loc, e);
         ad.members.push(dd);
+        dd.setScope(sc);
         dd.dsymbolSemantic(sc);
         xdtor = dd;
         break;
@@ -986,6 +991,7 @@ extern (C++) FuncDeclaration buildInv(AggregateDeclaration ad, Scope* sc)
         }
         auto inv = new InvariantDeclaration(declLoc, Loc.initial, stc | stcx, Id.classInvariant, new ExpStatement(loc, e));
         ad.members.push(inv);
+        inv.setScope(sc);
         inv.dsymbolSemantic(sc);
         return inv;
     }

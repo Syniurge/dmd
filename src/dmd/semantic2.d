@@ -569,7 +569,7 @@ private extern(C++) final class Semantic2Visitor : Visitor
                 }
             }
 
-            uad._scope = null;
+            uad._scope = null; // FWDREF FIXME this is bad, what if e is DeferExp
             eval(sc, uad.atts);
         }
         visit(cast(AttribDeclaration)uad);
@@ -581,7 +581,7 @@ private extern(C++) final class Semantic2Visitor : Visitor
         if (!ad.members)
             return;
 
-        if (ad._scope)
+        if (ad.semanticRun < PASS.semanticdone)
         {
             ad.error("has forward references");
             return;
