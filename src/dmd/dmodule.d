@@ -163,6 +163,13 @@ extern (C++) class Package : ScopeDsymbol
         return "package";
     }
 
+    override void setScope(Scope *sc)
+    {
+        // sc may be null if setScope gets called from Scope.createGlobal
+        if (sc)
+            super.setScope(sc);
+    }
+
     /****************************************************
      * Input:
      *      packages[]      the pkg1.pkg2 of pkg1.pkg2.mod
@@ -1019,13 +1026,6 @@ extern (C++) final class Module : Package
         if (!_scope)
             setScope(Scope.createGlobal(this)); // create root scope
         return _scope;
-    }
-
-    override void setScope(Scope *sc)
-    {
-        // sc may be null if setScope gets called from Scope.createGlobal
-        if (sc)
-            super.setScope(sc);
     }
 
     override void importAll(Scope* prevsc)

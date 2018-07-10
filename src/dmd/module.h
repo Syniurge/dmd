@@ -40,6 +40,7 @@ public:
     Module *mod;        // != NULL if isPkgMod == PKGmodule
 
     const char *kind() const;
+    void setScope(Scope *sc);
 
     static DsymbolTable *resolve(Identifiers *packages, Dsymbol **pparent, Package **ppkg);
 
@@ -130,7 +131,6 @@ public:
     bool read(Loc loc); // read file, returns 'true' if succeed, 'false' otherwise.
     Module *parse();    // syntactic parse
     Scope* newScope(Scope* sc);
-    void setScope(Scope *sc);
     void importAll(Scope *sc);
     int needModuleInfo();
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);

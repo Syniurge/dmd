@@ -154,6 +154,7 @@ struct Scope
         Dsymbol m = _module;
         while (m.parent)
             m = m.parent;
+                m.addMemberState = SemState.Init; // FWDREF HACK I find this rule weird anyway, why is the top level package/module special and added beneath the module scope?
         m.addMember(null, sc.scopesym);
         m.parent = null; // got changed by addMember()
         // Create the module scope underneath the global scope
