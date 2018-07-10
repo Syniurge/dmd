@@ -4451,7 +4451,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 ctor.fbody = new CompoundStatement(Loc.initial, new Statements());
 
                 cldec.members.push(ctor);
-                ctor.addMember(sc, cldec);
+                ctor.addMember(sc2, cldec);
                 ctor.dsymbolSemantic(sc2);
 
                 cldec.ctor = ctor;
