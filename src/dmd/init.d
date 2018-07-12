@@ -80,6 +80,11 @@ extern (C++) class Initializer : RootObject
         return null;
     }
 
+    DeferInitializer isDeferInitializer()
+    {
+        return null;
+    }
+
     VoidInitializer isVoidInitializer()
     {
         return null;
@@ -157,6 +162,38 @@ extern (C++) final class ErrorInitializer : Initializer
         v.visit(this);
     }
 }
+
+/***********************************************************
+ */
+extern (C++) final class DeferInitializer : Initializer
+{
+    extern (D) this()
+    {
+        super(Loc.initial);
+    }
+
+    override Initializer syntaxCopy()
+    {
+        return this;
+    }
+
+    override DeferInitializer isDeferInitializer()
+    {
+        return this;
+    }
+
+    override void accept(Visitor v)
+    {
+        v.visit(this);
+    }
+
+    static this()
+    {
+        deferInitializer = new DeferInitializer();
+    }
+}
+
+extern (C++) static __gshared DeferInitializer deferInitializer;
 
 /***********************************************************
  */

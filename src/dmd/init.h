@@ -23,6 +23,7 @@ struct Scope;
 class Type;
 class AggregateDeclaration;
 class ErrorInitializer;
+class DeferInitializer;
 class VoidInitializer;
 class StructInitializer;
 class ArrayInitializer;
@@ -41,6 +42,7 @@ public:
     const char *toChars();
 
     virtual ErrorInitializer   *isErrorInitializer() { return NULL; }
+    virtual DeferInitializer   *isDeferInitializer() { return NULL; }
     virtual VoidInitializer    *isVoidInitializer() { return NULL; }
     virtual StructInitializer  *isStructInitializer()  { return NULL; }
     virtual ArrayInitializer   *isArrayInitializer()  { return NULL; }
@@ -65,6 +67,15 @@ public:
     Initializer *syntaxCopy();
 
     virtual ErrorInitializer *isErrorInitializer() { return this; }
+    void accept(Visitor *v) { v->visit(this); }
+};
+
+class DeferInitializer : public Initializer
+{
+public:
+    Initializer *syntaxCopy();
+
+    virtual DeferInitializer *isDeferInitializer() { return this; }
     void accept(Visitor *v) { v->visit(this); }
 };
 

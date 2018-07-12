@@ -169,6 +169,7 @@ class DeleteDeclaration;
 class Initializer;
 class VoidInitializer;
 class ErrorInitializer;
+class DeferInitializer;
 class StructInitializer;
 class ArrayInitializer;
 class ExpInitializer;
@@ -602,6 +603,7 @@ public:
     virtual void visit(TypeInfoVectorDeclaration *s) { visit((TypeInfoDeclaration *)s); }
     virtual void visit(FuncAliasDeclaration *s) { visit((FuncDeclaration *)s); }
     virtual void visit(ErrorInitializer *i) { visit((Initializer *)i); }
+    virtual void visit(DeferInitializer *i) { visit((Initializer *)i); }
     virtual void visit(ErrorExp *e) { visit((Expression *)e); }
     virtual void visit(DeferExp *e) { visit((Expression *)e); }
     virtual void visit(ComplexExp *e) { visit((Expression *)e); }
