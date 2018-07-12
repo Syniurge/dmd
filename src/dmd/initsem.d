@@ -105,6 +105,11 @@ private extern(C++) final class InitializerSemanticVisitor : Visitor
         this.needInterpret = needInterpret;
     }
 
+    void setDefer()
+    {
+        result = deferInitializer;
+    }
+
     override void visit(VoidInitializer i)
     {
         i.type = t;
@@ -212,6 +217,8 @@ private extern(C++) final class InitializerSemanticVisitor : Visitor
                 assert(sc);
                 Initializer iz = i.value[j];
                 iz = iz.initializerSemantic(sc, vd.type.addMod(t.mod), needInterpret);
+                if (iz.isDeferInitializer())
+                    return setDefer();
                 Expression ex = iz.initializerToExpression();
                 if (ex.op == TOK.error)
                 {
@@ -333,6 +340,8 @@ private extern(C++) final class InitializerSemanticVisitor : Visitor
             if (ei && !idx)
                 ei.expandTuples = true;
             val = val.initializerSemantic(sc, t.nextOf(), needInterpret);
+            if (val.isDeferInitializer())
+                return setDefer();
             if (val.isErrorInitializer())
                 errors = true;
             ei = val.isExpInitializer();
@@ -396,10 +405,12 @@ private extern(C++) final class InitializerSemanticVisitor : Visitor
         //printf("ExpInitializer::semantic(%s), type = %s\n", exp.toChars(), t.toChars());
         if (needInterpret)
             sc = sc.startCTFE();
-        i.exp = i.exp.expressionSemantic(sc);
-        i.exp = resolveProperties(sc, i.exp);
-        if (needInterpret)
+        scope(exit) if (needInterpret)
             sc = sc.endCTFE();
+        auto ex = i.exp.expressionSemantic(sc);
+        if (ex.op == TOKdefer)
+            return setDefer();
+        i.exp = resolveProperties(sc, ex);
         if (i.exp.op == TOK.error)
         {
             result = new ErrorInitializer();
@@ -562,6 +573,11 @@ private extern(C++) final class InferTypeVisitor : Visitor
         this.sc = sc;
     }
 
+    void setDefer()
+    {
+        result = deferInitializer;
+    }
+
     override void visit(VoidInitializer i)
     {
         error(i.loc, "cannot infer type from void initializer");
@@ -655,7 +671,10 @@ private extern(C++) final class InferTypeVisitor : Visitor
     override void visit(ExpInitializer init)
     {
         //printf("ExpInitializer::inferType() %s\n", toChars());
-        init.exp = init.exp.expressionSemantic(sc);
+        auto e = init.exp.expressionSemantic(sc);
+        if (e.op == TOKdefer)
+            return setDefer();
+        init.exp = e;
 
         // for static alias this: https://issues.dlang.org/show_bug.cgi?id=17684
         if (init.exp.op == TOK.type)
@@ -734,6 +753,11 @@ private extern(C++) final class InitToExpressionVisitor : Visitor
     override void visit(ErrorInitializer)
     {
         result = new ErrorExp();
+    }
+
+    override void visit(DeferInitializer)
+    {
+        result = DeferExp.deferexp;
     }
 
     /***************************************

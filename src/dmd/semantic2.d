@@ -259,8 +259,14 @@ private extern(C++) final class Semantic2Visitor : Visitor
             }
             // https://issues.dlang.org/show_bug.cgi?id=14166
             // Don't run CTFE for the temporary variables inside typeof
-            vd._init = vd._init.initializerSemantic(sc, vd.type, sc.intypeof == 1 ? INITnointerpret : INITinterpret);
+            auto vinit = vd._init.initializerSemantic(sc, vd.type, sc.intypeof == 1 ? INITnointerpret : INITinterpret);
             vd.inuse--;
+            if (vinit.isDeferInitializer())
+            {
+                Module.addDeferredSemantic2(vd);
+                return;
+            }
+            vd._init = vinit;
         }
         if (vd._init && vd.storage_class & STC.manifest)
         {

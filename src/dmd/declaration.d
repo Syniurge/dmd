@@ -1462,9 +1462,12 @@ extern (C++) class VarDeclaration : Declaration
         if (_scope)
         {
             inuse++;
-            _init = _init.initializerSemantic(_scope, type, INITinterpret);
-            _scope = null;
+            auto vinit = _init.initializerSemantic(_scope, type, INITinterpret);
+            _scope = null; // FWDREF FIXME??
             inuse--;
+            if (vinit.isDeferInitializer())
+                return DeferExp.deferexp;
+            _init = vinit;
         }
 
         Expression e = _init.initializerToExpression(needFullType ? type : null);

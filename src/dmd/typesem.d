@@ -268,6 +268,11 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
         this.sc = sc;
     }
 
+    void setDefer()
+    {
+        result = Type.tdefer;
+    }
+
     override void visit(Type t)
     {
         if (t.ty == Tint128 || t.ty == Tuns128)
@@ -1048,6 +1053,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
                         e = new AddrExp(e.loc, e);
                         e = e.expressionSemantic(argsc);
                     }
+                    if (e.op == TOKdefer)
+                        return setDefer();
                     e = e.implicitCastTo(argsc, fparam.type);
 
                     // default arg must be an lvalue

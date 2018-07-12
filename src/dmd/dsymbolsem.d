@@ -1137,6 +1137,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         {
             sc = sc.push();
             sc.stc &= ~(STC.TYPECTOR | STC.pure_ | STC.nothrow_ | STC.nogc | STC.ref_ | STC.disable);
+            scope(exit) sc = sc.pop();
 
             ExpInitializer ei = dsym._init.isExpInitializer();
             if (ei) // https://issues.dlang.org/show_bug.cgi?id=13424
@@ -1162,7 +1163,10 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                         if (!e)
                         {
                             // Run semantic, but don't need to interpret
-                            dsym._init = dsym._init.initializerSemantic(sc, dsym.type, INITnointerpret);
+                            auto vinit = dsym._init.initializerSemantic(sc, dsym.type, INITnointerpret);
+                            if (vinit.isDeferInitializer())
+                                return defer();
+                            dsym._init = vinit;
                             e = dsym._init.initializerToExpression();
                             if (!e)
                             {
@@ -1228,7 +1232,10 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 {
                     // https://issues.dlang.org/show_bug.cgi?id=14166
                     // Don't run CTFE for the temporary variables inside typeof
-                    dsym._init = dsym._init.initializerSemantic(sc, dsym.type, sc.intypeof == 1 ? INITnointerpret : INITinterpret);
+                    auto vinit = dsym._init.initializerSemantic(sc, dsym.type, sc.intypeof == 1 ? INITnointerpret : INITinterpret);
+                    if (vinit.isDeferInitializer())
+                        return defer();
+                    dsym._init = vinit;
                 }
             }
             else if (parent.isAggregateDeclaration())
@@ -1290,8 +1297,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                         }
                         ei.exp = exp;
                     }
-                    dsym._init = dsym._init.initializerSemantic(sc, dsym.type, INITinterpret);
+                    auto vinit = dsym._init.initializerSemantic(sc, dsym.type, INITinterpret);
                     dsym.inuse--;
+                    if (vinit.isDeferInitializer())
+                        return defer();
+                    dsym._init = vinit;
                     if (global.errors > errors)
                     {
                         dsym._init = new ErrorInitializer();
@@ -1304,7 +1314,6 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                     dsym._scope.setNoFree();
                 }
             }
-            sc = sc.pop();
         }
 
     Ldtor:
