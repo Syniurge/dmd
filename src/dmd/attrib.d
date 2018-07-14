@@ -848,7 +848,7 @@ extern (C++) class ConditionalDeclaration : AttribDeclaration
     override final bool oneMember(Dsymbol* ps, Identifier ident)
     {
         //printf("ConditionalDeclaration::oneMember(), inc = %d\n", condition.inc);
-        if (condition.inc)
+        if (condition.inc && !condition.isDeferred())
         {
             Dsymbols* d = condition.include(null) ? decl : elsedecl;
             return Dsymbol.oneMembers(d, ps, ident);
