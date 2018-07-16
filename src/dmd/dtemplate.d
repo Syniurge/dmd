@@ -677,6 +677,8 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
      */
     bool evaluateConstraint(TemplateInstance ti, Scope* sc, Scope* paramscope, Objects* dedargs, FuncDeclaration fd)
     {
+        ti.constraintState = SemState.In;
+
         /* Detect recursive attempts to instantiate this template declaration,
          * https://issues.dlang.org/show_bug.cgi?id=4072
          *  void foo(T)(T x) if (is(typeof(foo(x)))) { }
@@ -780,8 +782,12 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
         ti.symtab = null;
         scx = scx.pop();
         previous = pr.prev; // unlink from threaded list
-        if (errors) // FWDREF FIXME
+        if (errors)
+        {
+            ti.constraintState = errors == 2 ? SemState.Defer : SemState.Done;
             return false;
+        }
+        ti.constraintState = SemState.Done;
         return result;
     }
 

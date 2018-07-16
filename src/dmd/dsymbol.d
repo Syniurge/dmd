@@ -231,6 +231,7 @@ extern (C++) class Dsymbol : RootObject
 
     alias bodyState = initializerState;
     alias aliasState = initializerState;
+    alias constraintState = initializerState;
     alias includeState = baseClassState;
     alias fieldsState = tiargsState;
     alias vtblState = tiargsState;
