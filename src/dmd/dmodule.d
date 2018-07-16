@@ -1214,34 +1214,100 @@ extern (C++) final class Module : Package
     {
         Module.runDeferredSemantic();
 
-        Dsymbols* a = &Module.deferred2;
-        for (size_t i = 0; i < a.dim; i++)
-        {
-            Dsymbol s = (*a)[i];
-            //printf("[%d] %s semantic2a\n", i, s.toPrettyChars());
-            s.semantic2(null);
+        static __gshared int nested;
+        if (nested)
+            return;
+        //if (deferred2.dim) printf("+Module::runDeferredSemantic(), len = %d\n", deferred2.dim);
+        nested++;
 
-            if (global.errors)
+        size_t len;
+        bool confidenceBoosted;
+        do
+        {
+            Scope.confidenceBoost = confidenceBoosted = (dprogress == 0);
+            dprogress = 0;
+            len = deferred2.dim;
+            if (!len)
                 break;
+
+            Dsymbol* todo;
+            Dsymbol* todoalloc = null;
+            Dsymbol tmp;
+            if (len == 1)
+            {
+                todo = &tmp;
+            }
+            else
+            {
+                todo = cast(Dsymbol*)malloc(len * Dsymbol.sizeof);
+                assert(todo);
+                todoalloc = todo;
+            }
+            memcpy(todo, deferred2.tdata(), len * Dsymbol.sizeof);
+            deferred2.setDim(0);
+
+            for (size_t i = 0; i < len; i++)
+            {
+                Dsymbol s = todo[i];
+                s.semantic2(null);
+                //printf("deferred2: %s, parent = %s\n", s.toChars(), s.parent.toChars());
+            }
+            //printf("\tdeferred2.dim = %d, len = %d, dprogress = %d\n", deferred2.dim, len, dprogress);
+            if (todoalloc)
+                free(todoalloc);
         }
-        a.setDim(0);
+        while (deferred2.dim < len || dprogress || !confidenceBoosted); // while making progress
+        nested--;
     }
 
     static void runDeferredSemantic3()
     {
         Module.runDeferredSemantic2();
 
-        Dsymbols* a = &Module.deferred3;
-        for (size_t i = 0; i < a.dim; i++)
-        {
-            Dsymbol s = (*a)[i];
-            //printf("[%d] %s semantic3a\n", i, s.toPrettyChars());
-            s.semantic3(null);
+        static __gshared int nested;
+        if (nested)
+            return;
+        //if (deferred3.dim) printf("+Module::runDeferredSemantic(), len = %d\n", deferred3.dim);
+        nested++;
 
-            if (global.errors)
+        size_t len;
+        bool confidenceBoosted;
+        do
+        {
+            Scope.confidenceBoost = confidenceBoosted = (dprogress == 0);
+            dprogress = 0;
+            len = deferred3.dim;
+            if (!len)
                 break;
+
+            Dsymbol* todo;
+            Dsymbol* todoalloc = null;
+            Dsymbol tmp;
+            if (len == 1)
+            {
+                todo = &tmp;
+            }
+            else
+            {
+                todo = cast(Dsymbol*)malloc(len * Dsymbol.sizeof);
+                assert(todo);
+                todoalloc = todo;
+            }
+            memcpy(todo, deferred3.tdata(), len * Dsymbol.sizeof);
+            deferred3.setDim(0);
+
+            for (size_t i = 0; i < len; i++)
+            {
+                Dsymbol s = todo[i];
+                s.semantic3(null);
+                //printf("deferred3: %s, parent = %s\n", s.toChars(), s.parent.toChars());
+            }
+            //printf("\tdeferred3.dim = %d, len = %d, dprogress = %d\n", deferred3.dim, len, dprogress);
+            if (todoalloc)
+                free(todoalloc);
         }
-        a.setDim(0);
+        while (deferred3.dim < len || dprogress || !confidenceBoosted); // while making progress
+        nested--;
     }
 
     static void clearCache()
