@@ -6501,6 +6501,8 @@ extern (C++) class TemplateInstance : ScopeDsymbol
      */
     final bool findTempDecl(Scope* sc, WithScopeSymbol* pwithsym)
     {
+        findTempDeclState = SemState.In;
+
         if (pwithsym)
             *pwithsym = null;
 
@@ -6516,7 +6518,14 @@ extern (C++) class TemplateInstance : ScopeDsymbol
              */
             Identifier id = name;
             Dsymbol scopesym;
-            Dsymbol s = sc.search(loc, id, &scopesym);
+            bool confident;
+            Dsymbol s = sc.search(loc, id, &scopesym, 0, &confident);
+            if (!confident)
+            {
+                findTempDeclState = SemState.Defer;
+                return false;
+            }
+            findTempDeclState = SemState.Done;
             if (!s)
             {
                 s = sc.search_correct(id);
@@ -6561,6 +6570,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
             }
         }
         assert(tempdecl);
+        findTempDeclState = SemState.Done;
 
         // Look for forward references
         auto tovers = tempdecl.isOverloadSet();

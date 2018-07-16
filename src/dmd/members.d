@@ -237,7 +237,7 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                 */
                 if (!tempinst.findTempDecl(sc, null) || !tempinst.semanticTiargs(sc) || !tempinst.findBestMatch(sc, fargs))
                 {
-                    if (tiargsState == SemState.Defer)
+                    if (findTempDeclState == SemState.Defer || tiargsState == SemState.Defer || constraintState == SemState.Defer)
                         return setDefer();
 
                 Lerror:

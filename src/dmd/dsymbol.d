@@ -229,6 +229,7 @@ extern (C++) class Dsymbol : RootObject
 
     mixin(semStates(["addMember", "symtab", "type", "initializer", "size", "baseClass", "tiargs", "semantic"]));
 
+    alias findTempDeclState = typeState;
     alias bodyState = initializerState;
     alias aliasState = initializerState;
     alias constraintState = initializerState;
