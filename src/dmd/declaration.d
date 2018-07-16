@@ -268,6 +268,9 @@ struct Match
     FuncDeclaration lastf;  // last matching function we found
     FuncDeclaration nextf;  // current matching function
     FuncDeclaration anyf;   // pick a func, any func, to use for error recovery
+
+    void setDeferred() { count = -1; }
+    bool isDeferred() { return count == -1; }
 }
 
 /***********************************************************

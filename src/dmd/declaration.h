@@ -657,7 +657,8 @@ FuncDeclaration *resolveFuncCall(const Loc &loc, Scope *sc, Dsymbol *s,
         Objects *tiargs,
         Type *tthis,
         Expressions *arguments,
-        int flags = 0);
+        int flags = 0,
+        bool* defer = NULL);
 
 class FuncAliasDeclaration : public FuncDeclaration
 {

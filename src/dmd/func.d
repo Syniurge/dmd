@@ -2632,7 +2632,7 @@ private const(char)* prependSpace(const(char)* str)
  *      if match is found, then function symbol, else null
  */
 extern (C++) FuncDeclaration resolveFuncCall(const ref Loc loc, Scope* sc, Dsymbol s,
-    Objects* tiargs, Type tthis, Expressions* fargs, int flags = 0)
+    Objects* tiargs, Type tthis, Expressions* fargs, int flags = 0, bool* defer = null)
 {
     if (!s)
         return null; // no match
@@ -2665,6 +2665,13 @@ extern (C++) FuncDeclaration resolveFuncCall(const ref Loc loc, Scope* sc, Dsymb
 
     const(char)* failMessage;
     functionResolve(&m, s, loc, sc, tiargs, tthis, fargs, &failMessage);
+
+    if (m.isDeferred())
+    {
+        if (defer)
+            *defer = true;
+        return null;
+    }
 
     if (m.last > MATCH.nomatch && m.lastf)
     {

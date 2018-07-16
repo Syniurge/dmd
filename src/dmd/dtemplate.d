@@ -2694,6 +2694,11 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
 
             auto fd = f;
             int x = td.deduceFunctionTemplateMatch(ti, sc, fd, tthis, fargs);
+            if (ti.constraintState == SemState.Defer)
+            {
+                m.setDeferred();
+                return 1;
+            }
             MATCH mta = cast(MATCH)(x >> 4);
             MATCH mfa = cast(MATCH)(x & 0xF);
             //printf("match:t/f = %d/%d\n", mta, mfa);
@@ -2868,7 +2873,7 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
         // or found matches were ambiguous.
         assert(m.count >= 1);
     }
-    else
+    else if (!m.isDeferred())
     {
     Lnomatch:
         m.count = 0;
@@ -7034,6 +7039,8 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                 assert(td.semanticRun != PASS.init);
 
                 MATCH m = td.matchWithInstance(sc, this, &dedtypes, fargs, 0);
+                if (constraintState == SemState.Defer)
+                    return 1;
                 //printf("matchWithInstance = %d\n", m);
                 if (m <= MATCH.nomatch) // no match at all
                     return 0;
@@ -7066,6 +7073,9 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                 memcpy(tdtypes.tdata(), dedtypes.tdata(), tdtypes.dim * (void*).sizeof);
                 return 0;
             });
+
+            if (constraintState == SemState.Defer)
+                return false;
 
             if (td_ambig)
             {
