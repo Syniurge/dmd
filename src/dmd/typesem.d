@@ -2141,6 +2141,13 @@ private extern(C++) final class ResolveVisitor : Visitor
     Dsymbol* ps;
     bool intypeid;
 
+    private void setDefer()
+    {
+        *pt = Type.tdefer;
+        *pe = null;
+        *ps = null;
+    }
+
     this(const ref Loc loc, Scope* sc, Expression* pe, Type* pt, Dsymbol* ps, bool intypeid)
     {
         this.loc = loc;
@@ -2347,6 +2354,9 @@ private extern(C++) final class ResolveVisitor : Visitor
         bool confident;
         Dsymbol s = sc.search(loc, mt.ident, &scopesym, IgnoreNone, &confident);
 
+        if (!confident)
+            return setDefer();
+
         if (s)
         {
             // https://issues.dlang.org/show_bug.cgi?id=16042
@@ -2385,10 +2395,7 @@ private extern(C++) final class ResolveVisitor : Visitor
             return;
         }
         else if (mt.tempinst.symtabState != SemState.Done)
-        {
-            *pt = Type.tdefer;
-            return;
-        }
+            return setDefer();
 
         bool confident = true; // FWDREF FIXME
         mt.resolveHelper(loc, sc, mt.tempinst, null, confident, pe, pt, ps, intypeid);
@@ -2433,7 +2440,9 @@ private extern(C++) final class ResolveVisitor : Visitor
         exp2 = resolvePropertiesOnly(sc2, exp2);
         sc2.pop();
 
-        if (exp2.op == TOK.error)
+        if (exp2.op == TOKdefer)
+            return setDefer();
+        else if (exp2.op == TOK.error)
         {
             if (!global.gag)
                 mt.exp = exp2;
