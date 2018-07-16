@@ -150,6 +150,15 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         result = new DeferStatement();
     }
 
+    private bool semanticOrDefer(ref Expression exp)
+    {
+        auto e = exp.expressionSemantic(sc);
+        if (e.op == TOKdefer)
+            return true;
+        exp = e;
+        return false;
+    }
+
     override void visit(Statement s)
     {
         result = s;
@@ -3044,7 +3053,8 @@ else
             else if (fld && fld.treq)
                 rs.exp = inferType(rs.exp, fld.treq.nextOf().nextOf());
 
-            rs.exp = rs.exp.expressionSemantic(sc);
+            if (semanticOrDefer(rs.exp))
+                return setDefer();
 
             // for static alias this: https://issues.dlang.org/show_bug.cgi?id=17684
             if (rs.exp.op == TOK.type)
