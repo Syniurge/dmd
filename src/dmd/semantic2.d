@@ -245,6 +245,9 @@ private extern(C++) final class Semantic2Visitor : Visitor
             return;
         }
 
+        if (!sc)
+            sc = vd._scope; // FWDREF NOTE: this was added because VarDeclaration might be semantic2'd during runDeferredSemantic2, but sc should get removed at some point anyway
+
         if (vd._init && !vd.toParent().isFuncDeclaration())
         {
             vd.inuse++;
