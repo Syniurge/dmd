@@ -1472,6 +1472,8 @@ private extern (C++) final class TypeSemanticVisitor : Visitor
     {
         //printf("TypeSlice::semantic() %s\n", toChars());
         Type tn = mtype.next.typeSemantic(loc, sc);
+        if (tn.ty == Tdefer)
+            return setDefer();
         //printf("next: %s\n", tn.toChars());
 
         Type tbn = tn.toBasetype();
