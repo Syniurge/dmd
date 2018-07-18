@@ -1980,6 +1980,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             ti.dsymbolSemantic(sc);
             if (!ti.inst || ti.errors)
                 return setError();
+            if (ti.symtabState == SemState.Defer) // toAlias() will be too early
+                return setDefer();
 
             Dsymbol s = ti.toAlias();
             if (s == ti)
