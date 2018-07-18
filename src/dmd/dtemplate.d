@@ -677,6 +677,8 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
      */
     bool evaluateConstraint(TemplateInstance ti, Scope* sc, Scope* paramscope, Objects* dedargs, FuncDeclaration fd)
     {
+        if (ti.constraintState == SemState.In)
+            return false;
         ti.constraintState = SemState.In;
 
         /* Detect recursive attempts to instantiate this template declaration,
@@ -2694,7 +2696,7 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
 
             auto fd = f;
             int x = td.deduceFunctionTemplateMatch(ti, sc, fd, tthis, fargs);
-            if (ti.constraintState == SemState.Defer)
+            if (ti.constraintState == SemState.In || ti.constraintState == SemState.Defer)
             {
                 m.setDeferred();
                 return 1;
@@ -6501,6 +6503,8 @@ extern (C++) class TemplateInstance : ScopeDsymbol
      */
     final bool findTempDecl(Scope* sc, WithScopeSymbol* pwithsym)
     {
+        if (findTempDeclState == SemState.In)
+            return false;
         findTempDeclState = SemState.In;
 
         if (pwithsym)
@@ -6971,6 +6975,9 @@ extern (C++) class TemplateInstance : ScopeDsymbol
     final bool semanticTiargs(Scope* sc)
     {
         //printf("+TemplateInstance.semanticTiargs() %s\n", toChars());
+        if (tiargsState == SemState.In)
+            return false;
+        tiargsState = SemState.In;
         if (tiargsState == SemState.Done)
             return true;
         auto result = semanticTiargs(loc, sc, tiargs, 0);
@@ -7049,7 +7056,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                 assert(td.semanticRun != PASS.init);
 
                 MATCH m = td.matchWithInstance(sc, this, &dedtypes, fargs, 0);
-                if (constraintState == SemState.Defer)
+                if (constraintState == SemState.In || constraintState == SemState.Defer)
                     return 1;
                 //printf("matchWithInstance = %d\n", m);
                 if (m <= MATCH.nomatch) // no match at all
@@ -7084,7 +7091,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
                 return 0;
             });
 
-            if (constraintState == SemState.Defer)
+            if (constraintState == SemState.In || constraintState == SemState.Defer)
                 return false;
 
             if (td_ambig)
