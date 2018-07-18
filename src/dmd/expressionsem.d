@@ -1932,8 +1932,13 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         while (ti)
         {
             WithScopeSymbol withsym;
-            if (!ti.findTempDecl(sc, &withsym) || !ti.semanticTiargs(sc)) // FWDREF FIXME
+            if (!ti.findTempDecl(sc, &withsym) || !ti.semanticTiargs(sc))
+            {
+                if (ti.findTempDeclState == SemState.In || ti.tiargsState == SemState.In ||
+                        ti.findTempDeclState == SemState.Defer || ti.tiargsState == SemState.Defer)
+                    return setDefer();
                 return setError();
+            }
             if (withsym && withsym.withstate.wthis)
             {
                 Expression e = new VarExp(exp.loc, withsym.withstate.wthis);
