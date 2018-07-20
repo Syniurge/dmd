@@ -189,7 +189,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
             // Allow CommaExp in ExpStatement because return isn't used
             CommaExp.allow(s.exp);
 
-            s.exp = s.exp.expressionSemantic(sc);
+            if (semanticOrDefer(s.exp))
+                return setDefer();
             s.exp = resolveProperties(sc, s.exp);
             s.exp = s.exp.addDtorHook(sc);
             if (checkNonAssignmentArrayOp(s.exp))
