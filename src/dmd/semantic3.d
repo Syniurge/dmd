@@ -305,6 +305,8 @@ private extern(C++) final class Semantic3Visitor : Visitor
             funcdecl.localsymtab = new DsymbolTable();
 
             // Establish function scope
+            if (!funcdecl.fsc)
+            {
             auto ss = new ScopeDsymbol();
             // find enclosing scope symbol, might skip symbol-less CTFE and/or FuncExp scopes
             for (auto scx = sc; ; scx = scx.enclosing)
@@ -341,6 +343,10 @@ private extern(C++) final class Semantic3Visitor : Visitor
             if (sc2.intypeof == 1)
                 sc2.intypeof = 2;
             sc2.ctorflow.fieldinit = null;
+            funcdecl.fsc = sc2;// FWDREF FIXME (temporarily minimized the number of changed lines)
+            }
+
+            Scope* sc2 = funcdecl.fsc;
 
             /* Note: When a lambda is defined immediately under aggregate member
              * scope, it should be contextless due to prevent interior pointers.
@@ -555,11 +561,15 @@ private extern(C++) final class Semantic3Visitor : Visitor
 
             if (funcdecl.fbody)
             {
+                if (!funcdecl.fbodysc)
+                {
                 auto sym = new ScopeDsymbol();
                 sym.parent = sc2.scopesym;
                 sym.loc = funcdecl.loc;
                 sym.endlinnum = funcdecl.endloc.linnum;
-                sc2 = sc2.push(sym);
+                funcdecl.fbodysc = sc2.push(sym);
+                }
+                sc2 = funcdecl.fbodysc;
                 scope(exit) sc2 = sc2.pop();
 
                 auto ad2 = funcdecl.isMember2();
@@ -586,6 +596,8 @@ private extern(C++) final class Semantic3Visitor : Visitor
                     funcdecl.bodyState = SemState.Defer; // FWDREF TODO semantic3 should disappear, and this should go into a new method called bodySemantic()
                     funcdecl.semanticRun = PASS.semantic2done; // FWDREF FIXME (this is to stay as close as possible to the old behavior)
                     sc.instantiatingModule().addDeferredSemantic3(funcdecl);
+                    funcdecl.fsc.setNoFree();
+                    funcdecl.fbodysc.setNoFree();
                     return;
                 }
                     funcdecl.bodyState = SemState.Done;

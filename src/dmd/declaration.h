@@ -507,6 +507,9 @@ public:
     VarDeclaration *vresult;            // result variable for out contracts
     LabelDsymbol *returnLabel;          // where the return goes
 
+    Scope* fsc;                         // function scope (parameters..)
+    Scope* fbodysc;                     // body scope
+
     // used to prevent symbols in different
     // scopes from having the same name
     DsymbolTable *localsymtab;
