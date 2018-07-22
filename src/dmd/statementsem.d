@@ -4071,19 +4071,7 @@ else
         foreach (i; 0 .. imps.imports.dim)
         {
             Import s = (*imps.imports)[i].isImport();
-            assert(!s.aliasdecls.dim);
-            foreach (j, name; s.names)
-            {
-                Identifier _alias = s.aliases[j];
-                if (!_alias)
-                    _alias = name;
-
-                auto tname = new TypeIdentifier(s.loc, name);
-                auto ad = new AliasDeclaration(s.loc, _alias, tname);
-                ad._import = s;
-                s.aliasdecls.push(ad);
-            }
-
+            s.makeAliases(sc, null);
             s.dsymbolSemantic(sc);
             Module.addDeferredSemantic2(s);     // https://issues.dlang.org/show_bug.cgi?id=14666
             sc.insert(s);

@@ -56,6 +56,7 @@ public:
     void setScope(Scope* sc);
     Dsymbol *search(Loc loc, Identifier *ident, int flags = SearchLocalsOnly);
     bool overloadInsert(Dsymbol *s);
+    void makeAliases(Scope* sc, ScopeDsymbol* sd);
 
     Import *isImport() { return this; }
     void accept(Visitor *v) { v->visit(this); }

@@ -246,19 +246,7 @@ extern (C++) final class Import : Dsymbol
         /* Instead of adding the import to sd's symbol table,
          * add each of the alias=name pairs
          */
-        for (size_t i = 0; i < names.dim; i++)
-        {
-            Identifier name = names[i];
-            Identifier _alias = aliases[i];
-            if (!_alias)
-                _alias = name;
-            auto tname = new TypeIdentifier(loc, name);
-            auto ad = new AliasDeclaration(loc, _alias, tname);
-            ad._import = this;
-            ad.addMember(sc, sd);
-            assert(ad.addMemberState == SemState.Done);
-            aliasdecls.push(ad);
-        }
+        makeAliases(sc, sd);
 
         setScope(sc);
 
@@ -313,6 +301,32 @@ extern (C++) final class Import : Dsymbol
             return true;
         else
             return false;
+    }
+
+    final void makeAliases(Scope* sc, ScopeDsymbol sd)
+    {
+        if (aliasState == SemState.Done)
+            return;
+        assert(!aliasdecls.dim);
+
+        for (size_t i = 0; i < names.dim; i++)
+        {
+            Identifier name = names[i];
+            Identifier _alias = aliases[i];
+            if (!_alias)
+                _alias = name;
+            auto tname = new TypeIdentifier(loc, name);
+            auto ad = new AliasDeclaration(loc, _alias, tname);
+            ad._import = this;
+            aliasdecls.push(ad);
+            if (sd)
+            {
+                ad.addMember(sc, sd);
+                assert(ad.addMemberState == SemState.Done);
+            }
+        }
+
+        aliasState = SemState.Done;
     }
 
     override inout(Import) isImport() inout
