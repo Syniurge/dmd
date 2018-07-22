@@ -67,6 +67,7 @@ TypeIdentifier getThrowable()
 extern (C++) abstract class Statement : RootObject
 {
     Loc loc;
+    ScopeDsymbol sds;           // non-null if the statement introduces a scope
 
     override final DYNCAST dyncast() const
     {
@@ -2045,6 +2046,8 @@ extern (C++) final class Catch : RootObject
     Identifier ident;
     VarDeclaration var;
     Statement handler;
+
+    ScopeDsymbol sds;
 
     bool errors;                // set if semantic processing errors
 

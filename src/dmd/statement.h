@@ -76,6 +76,7 @@ class Statement : public RootObject
 {
 public:
     Loc loc;
+    ScopeDsymbol* sds;          // non-null if the statement introduces a scope
 
     virtual Statement *syntaxCopy();
 
@@ -573,6 +574,8 @@ public:
     Identifier *ident;
     VarDeclaration *var;
     Statement *handler;
+
+    ScopeDsymbol *sds;
 
     // set if semantic processing errors
     bool errors;

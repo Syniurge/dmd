@@ -416,10 +416,13 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         //printf("ScopeStatement::semantic(sc = %p)\n", sc);
         if (ss.statement)
         {
-            ScopeDsymbol sym = new ScopeDsymbol();
-            sym.parent = sc.scopesym;
-            sym.endlinnum = ss.endloc.linnum;
-            sc = sc.push(sym);
+            if (!ss.sds)
+            {
+                ss.sds = new ScopeDsymbol();
+                ss.sds.parent = sc.scopesym;
+                ss.sds.endlinnum = ss.endloc.linnum;
+            }
+            sc = sc.push(ss.sds);
 
             Statements* a = ss.statement.flatten(sc);
             if (a)
@@ -557,10 +560,13 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         }
         assert(fs._init is null);
 
-        auto sym = new ScopeDsymbol();
-        sym.parent = sc.scopesym;
-        sym.endlinnum = fs.endloc.linnum;
-        sc = sc.push(sym);
+        if (!fs.sds)
+        {
+            fs.sds = new ScopeDsymbol();
+            fs.sds.parent = sc.scopesym;
+            fs.sds.endlinnum = fs.endloc.linnum;
+        }
+        sc = sc.push(fs.sds);
         sc.inLoop = true;
 
         if (fs.condition)
@@ -1153,10 +1159,13 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
             return;
         }
 
-        auto sym = new ScopeDsymbol();
-        sym.parent = sc.scopesym;
-        sym.endlinnum = fs.endloc.linnum;
-        auto sc2 = sc.push(sym);
+        if (!fs.sds)
+        {
+            fs.sds = new ScopeDsymbol();
+            fs.sds.parent = sc.scopesym;
+            fs.sds.endlinnum = fs.endloc.linnum;
+        }
+        auto sc2 = sc.push(fs.sds);
         sc2.inLoop = true;
 
         foreach (Parameter p; *fs.parameters)
@@ -2142,10 +2151,13 @@ else
         // check in syntax level
         ifs.condition = checkAssignmentAsCondition(ifs.condition);
 
-        auto sym = new ScopeDsymbol();
-        sym.parent = sc.scopesym;
-        sym.endlinnum = ifs.endloc.linnum;
-        Scope* scd = sc.push(sym);
+        if (!ifs.sds)
+        {
+            ifs.sds = new ScopeDsymbol();
+            ifs.sds.parent = sc.scopesym;
+            ifs.sds.endlinnum = ifs.endloc.linnum;
+        }
+        Scope* scd = sc.push(ifs.sds);
         if (ifs.prm)
         {
             /* Declare prm, which we will set to be the
@@ -4107,9 +4119,12 @@ void catchSemantic(Catch c, Scope* sc)
         c.errors = true;
     }
 
-    auto sym = new ScopeDsymbol();
-    sym.parent = sc.scopesym;
-    sc = sc.push(sym);
+    if (!c.sds)
+    {
+        c.sds = new ScopeDsymbol();
+        c.sds.parent = sc.scopesym;
+    }
+    sc = sc.push(c.sds);
 
     if (!c.type)
     {
@@ -4208,9 +4223,12 @@ Statement semanticNoScope(Statement s, Scope* sc)
 // Same as semanticNoScope(), but do create a new scope
 Statement semanticScope(Statement s, Scope* sc, Statement sbreak, Statement scontinue)
 {
-    auto sym = new ScopeDsymbol();
-    sym.parent = sc.scopesym;
-    Scope* scd = sc.push(sym);
+    if (!s.sds)
+    {
+        s.sds = new ScopeDsymbol();
+        s.sds.parent = sc.scopesym;
+    }
+    Scope* scd = sc.push(s.sds);
     if (sbreak)
         scd.sbreak = sbreak;
     if (scontinue)
