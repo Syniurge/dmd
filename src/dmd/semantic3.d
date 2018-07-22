@@ -299,14 +299,14 @@ private extern(C++) final class Semantic3Visitor : Visitor
 
         if (funcdecl.fbody || funcdecl.frequires || needEnsure)
         {
+            if (!funcdecl.fsc)
+            {
             /* Symbol table into which we place parameters and nested functions,
              * solely to diagnose name collisions.
              */
             funcdecl.localsymtab = new DsymbolTable();
 
             // Establish function scope
-            if (!funcdecl.fsc)
-            {
             auto ss = new ScopeDsymbol();
             // find enclosing scope symbol, might skip symbol-less CTFE and/or FuncExp scopes
             for (auto scx = sc; ; scx = scx.enclosing)
@@ -320,7 +320,6 @@ private extern(C++) final class Semantic3Visitor : Visitor
             ss.loc = funcdecl.loc;
             ss.endlinnum = funcdecl.endloc.linnum;
             Scope* sc2 = sc.push(ss);
-            scope(exit) sc2.pop();
             sc2.func = funcdecl;
             sc2.parent = funcdecl;
             sc2.ctorflow.callSuper = CSX.none;
@@ -343,10 +342,11 @@ private extern(C++) final class Semantic3Visitor : Visitor
             if (sc2.intypeof == 1)
                 sc2.intypeof = 2;
             sc2.ctorflow.fieldinit = null;
-            funcdecl.fsc = sc2;// FWDREF FIXME (temporarily minimized the number of changed lines)
+            funcdecl.fsc = sc2; // FWDREF FIXME (temporarily minimized the number of changed lines)
             }
 
             Scope* sc2 = funcdecl.fsc;
+            scope(exit) sc2.pop();
 
             /* Note: When a lambda is defined immediately under aggregate member
              * scope, it should be contextless due to prevent interior pointers.
@@ -383,6 +383,8 @@ private extern(C++) final class Semantic3Visitor : Visitor
 
             // Declare 'this'
             auto ad = funcdecl.isThis();
+            if (funcdecl.bodyState == SemState.Defer)
+                goto afterParamDeclare;
             funcdecl.vthis = funcdecl.declareThis(sc2, ad);
             //printf("[%s] ad = %p vthis = %p\n", loc.toChars(), ad, vthis);
             //if (vthis) printf("\tvthis.type = %s\n", vthis.type.toChars());
@@ -420,6 +422,7 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 }
             }
 
+            { // FWDREF FIXME
             /* Declare all the function parameters as variables
              * and install them in parameters[]
              */
@@ -477,6 +480,8 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 }
             }
 
+            }
+
             // Declare the tuple symbols and put them in the symbol table,
             // but not in parameters[].
             if (f.parameters)
@@ -512,6 +517,8 @@ private extern(C++) final class Semantic3Visitor : Visitor
                     }
                 }
             }
+
+        afterParamDeclare:
 
             // Precondition invariant
             Statement fpreinv = null;
