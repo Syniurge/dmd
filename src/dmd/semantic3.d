@@ -218,6 +218,9 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 (funcdecl.isMain() || global.params.betterC && funcdecl.isCMain());
         }
 
+        if (!sc)
+            sc = funcdecl._scope;
+
         VarDeclaration _arguments = null;
 
         if (!funcdecl.parent)
@@ -262,7 +265,7 @@ private extern(C++) final class Semantic3Visitor : Visitor
         }
 
         //printf(" sc.incontract = %d\n", (sc.flags & SCOPE.contract));
-        if (funcdecl.semanticRun >= PASS.semantic3)
+        if (funcdecl.semanticRun >= PASS.semantic3done)
             return;
         funcdecl.semanticRun = PASS.semantic3;
         funcdecl.semantic3Errors = false;
@@ -601,7 +604,6 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 if (fnbody.isDeferStatement())
                 {
                     funcdecl.bodyState = SemState.Defer; // FWDREF TODO semantic3 should disappear, and this should go into a new method called bodySemantic()
-                    funcdecl.semanticRun = PASS.semantic2done; // FWDREF FIXME (this is to stay as close as possible to the old behavior)
                     sc.instantiatingModule().addDeferredSemantic3(funcdecl);
                     funcdecl.fsc.setNoFree();
                     funcdecl.fbodysc.setNoFree();
