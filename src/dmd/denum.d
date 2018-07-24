@@ -139,7 +139,7 @@ extern (C++) final class EnumDeclaration : ScopeDsymbol
         if (_scope)
         {
             // Try one last time to resolve this enum
-            dsymbolSemantic(this, _scope);
+            dsymbolSemantic(this, _scope); // FWDREF FIXME
         }
 
         if (!members || !symtab || semanticRun < PASS.semanticdone)

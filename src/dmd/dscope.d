@@ -127,6 +127,7 @@ struct Scope
 
     extern (C++) static __gshared Scope* freelist;
     extern (C++) static __gshared bool confidenceBoost; // FWDREF FIXME: global state is bad
+    extern (C++) static __gshared bool confidenceBoostUsed;
 
     extern (C++) static Scope* alloc()
     {
@@ -449,12 +450,14 @@ struct Scope
             if (global.params.bug10378)
                 s = sold;
         }
+        if (Module.dprogress)
+            confidenceBoost = false; // FWDREF NOTE: if there was semantic progress, don't boost confidence yet, wait for the next runDeferredSemantic
         if (s && confident && !*confident && confidenceBoost)
         {
             // Try to unblock a stalled Module.runDeferredSemantic by boosting confidence on the result, even if the "correct" symbol gets added later to one of the symtabs
             // FWDREF NOTE: this should work for most D code, but if we really want to make D declarations totally order-independent a much more complex solutio is needed
             *confident = true;
-            confidenceBoost = false;
+            confidenceBoostUsed = true;
         }
         return s;
     }
@@ -719,5 +722,11 @@ struct Scope
                 return true;
         }
         return false;
+    }
+
+    static void resetConfidenceBoostIfUsed()
+    {
+        if (confidenceBoostUsed)
+            confidenceBoostUsed = confidenceBoost = false;
     }
 }

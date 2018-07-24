@@ -1257,6 +1257,7 @@ private extern(C++) final class Semantic3Visitor : Visitor
          */
         funcdecl.semanticRun = PASS.semantic3done;
         funcdecl.semantic3Errors = (global.errors != oldErrors) || (funcdecl.fbody && funcdecl.fbody.isErrorStatement());
+        Module.dprogress++;
         if (funcdecl.type.ty == Terror)
             funcdecl.errors = true;
         //printf("-FuncDeclaration::semantic3('%s.%s', sc = %p, loc = %s)\n", parent.toChars(), toChars(), sc, loc.toChars());

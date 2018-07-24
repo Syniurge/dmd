@@ -2666,6 +2666,8 @@ extern (C++) FuncDeclaration resolveFuncCall(const ref Loc loc, Scope* sc, Dsymb
     Match m;
     m.last = MATCH.nomatch;
 
+    bool isConfidenceBeingBoosted = Scope.confidenceBoost; // FWDREF FIXME REMOVE
+
     const(char)* failMessage;
     functionResolve(&m, s, loc, sc, tiargs, tthis, fargs, &failMessage);
 

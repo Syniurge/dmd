@@ -1174,6 +1174,7 @@ extern (C++) final class Module : Package
         do
         {
             Scope.confidenceBoost = confidenceBoosted = (dprogress == 0);
+            Scope.confidenceBoostUsed = false;
             dprogress = 0;
             len = deferred.dim;
             if (!len)
@@ -1225,6 +1226,7 @@ extern (C++) final class Module : Package
         do
         {
             Scope.confidenceBoost = confidenceBoosted = (dprogress == 0);
+            Scope.confidenceBoostUsed = false;
             dprogress = 0;
             len = deferred2.dim;
             if (!len)
@@ -1275,6 +1277,7 @@ extern (C++) final class Module : Package
         do
         {
             Scope.confidenceBoost = confidenceBoosted = (dprogress == 0);
+            Scope.confidenceBoostUsed = false;
             dprogress = 0;
             len = deferred3.dim;
             if (!len)
