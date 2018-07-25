@@ -264,6 +264,9 @@ private extern(C++) final class Semantic3Visitor : Visitor
             }
         }
 
+        if (funcdecl.bodyState == SemState.In)
+            return; // FWDREF FIXME TEMPORARY
+
         //printf(" sc.incontract = %d\n", (sc.flags & SCOPE.contract));
         if (funcdecl.semanticRun >= PASS.semantic3done)
             return;
@@ -600,6 +603,7 @@ private extern(C++) final class Semantic3Visitor : Visitor
 
                 bool inferRef = (f.isref && (funcdecl.storage_class & STC.auto_));
 
+                    funcdecl.bodyState = SemState.In;
                 auto fnbody = funcdecl.fbody.statementSemantic(sc2);
                 if (fnbody.isDeferStatement())
                 {

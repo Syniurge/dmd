@@ -2676,6 +2676,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             exp.fd.semantic2(sc);
             if (olderrors == global.errors)
                 exp.fd.semantic3(sc);
+            if (exp.fd.bodyState != SemState.Done || exp.fd.semanticRun < PASS.semantic3done) // FWDREF NOTE: second half should go
+                return setDefer();
         }
         if (olderrors != global.errors)
         {
