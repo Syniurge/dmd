@@ -1125,6 +1125,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         }
         if (dsym._init)
         {
+            dsym.initializerState = SemState.In;
             sc = sc.push();
             sc.stc &= ~(STC.TYPECTOR | STC.pure_ | STC.nothrow_ | STC.nogc | STC.ref_ | STC.disable);
             scope(exit) sc = sc.pop();
@@ -1132,7 +1133,15 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             ExpInitializer ei = dsym._init.isExpInitializer();
             if (ei) // https://issues.dlang.org/show_bug.cgi?id=13424
                     // Preset the required type to fail in FuncLiteralDeclaration::semantic3
-                ei.exp = inferType(ei.exp, dsym.type);
+            {
+                auto exp = inferType(ei.exp, dsym.type);
+                if (exp.op == TOKdefer)
+                {
+                    dsym.initializerState = SemState.Defer;
+                    return defer();
+                }
+                ei.exp = exp;
+            }
 
             // If inside function, there is no semantic3() call
             if (sc.func || sc.intypeof == 1)
@@ -1182,6 +1191,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                     {
                         dsym._init = new ErrorInitializer();
                         ei = null;
+                    }
+                    else if (exp.op == TOKdefer)
+                    {
+                        dsym.initializerState = SemState.Defer;
+                        return defer();
                     }
                     else
                         ei.exp = exp;
@@ -1237,7 +1251,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                  * subsequent type, such as an array dimension, before semantic2()
                  * gets ordinarily run, try to run semantic2() now.
                  * Ignore failure.
-                 */
+                 */ // FWDREF FIXME & NOTE: Geeze, did this really warrant code duplication?
                 if (!inferred)
                 {
                     uint errors = global.errors;
@@ -1283,6 +1297,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                                     dsym.error("of type struct `%s` uses `this(this)`, which is not allowed in static initialization", tb2.toChars());
                             }
                         }
+                        if (exp.op == TOKdefer)
+                        {
+                            dsym.initializerState = SemState.Defer;
+                            return defer();
+                        }
                         ei.exp = exp;
                     }
                     auto vinit = dsym._init.initializerSemantic(sc, dsym.type, INITinterpret);
@@ -1301,6 +1320,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 }
             }
         }
+        dsym.initializerState = SemState.Done;
 
     Ldtor:
         /* Build code to execute destruction, if necessary
