@@ -459,6 +459,20 @@ extern (C++) Expression op_overload(Expression e, Scope* sc)
             this.sc = sc;
         }
 
+        private final void setDefer()
+        {
+            result = DeferExp.deferexp;
+        }
+
+        private final bool semanticOrDefer(ref Expression exp)
+        {
+            auto e = exp.expressionSemantic(sc);
+            if (e.op == TOKdefer)
+                return true;
+            exp = e;
+            return false;
+        }
+
         override void visit(Expression e)
         {
             assert(0);
@@ -470,7 +484,8 @@ extern (C++) Expression op_overload(Expression e, Scope* sc)
             if (e.e1.op == TOK.array)
             {
                 ArrayExp ae = cast(ArrayExp)e.e1;
-                ae.e1 = ae.e1.expressionSemantic(sc);
+                if (semanticOrDefer(ae.e1))
+                    return setDefer();
                 ae.e1 = resolveProperties(sc, ae.e1);
                 Expression ae1old = ae.e1;
                 const(bool) maybeSlice = (ae.arguments.dim == 0 || ae.arguments.dim == 1 && (*ae.arguments)[0].op == TOK.interval);
@@ -622,7 +637,8 @@ extern (C++) Expression op_overload(Expression e, Scope* sc)
         override void visit(ArrayExp ae)
         {
             //printf("ArrayExp::op_overload() (%s)\n", ae.toChars());
-            ae.e1 = ae.e1.expressionSemantic(sc);
+            if (semanticOrDefer(ae.e1))
+                return setDefer();
             ae.e1 = resolveProperties(sc, ae.e1);
             Expression ae1old = ae.e1;
             const(bool) maybeSlice = (ae.arguments.dim == 0 || ae.arguments.dim == 1 && (*ae.arguments)[0].op == TOK.interval);
@@ -1322,7 +1338,8 @@ extern (C++) Expression op_overload(Expression e, Scope* sc)
             if (e.e1.op == TOK.array)
             {
                 ArrayExp ae = cast(ArrayExp)e.e1;
-                ae.e1 = ae.e1.expressionSemantic(sc);
+                if (semanticOrDefer(ae.e1))
+                    return setDefer();
                 ae.e1 = resolveProperties(sc, ae.e1);
                 Expression ae1old = ae.e1;
                 const(bool) maybeSlice = (ae.arguments.dim == 0 || ae.arguments.dim == 1 && (*ae.arguments)[0].op == TOK.interval);
