@@ -601,6 +601,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         /* If auto type inference, do the inference
          */
         int inferred = 0;
+        dsym.typeState = SemState.In;
         if (!dsym.type)
         {
             dsym.inuse++;
@@ -643,12 +644,16 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             dsym.inuse--;
             sc2.pop();
             if (vtype.ty == Tdefer)
+            {
+                dsym.typeState = SemState.Defer;
                 return defer();
+            }
             dsym.type = vtype;
         }
         //printf(" semantic type = %s\n", type ? type.toChars() : "null");
         if (dsym.type.ty == Terror)
             dsym.errors = true;
+        dsym.typeState = SemState.Done;
 
         dsym.type.checkDeprecated(dsym.loc, sc);
         dsym.linkage = sc.linkage;
@@ -4137,9 +4142,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
             sc2.pop();
 
-            sd._scope._module.addDeferredSemantic(sd);
             //printf("\tdeferring %s\n", toChars());
-            return;
+            return defer();
         }
 
         /* Look for special member functions.
