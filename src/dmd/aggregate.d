@@ -141,6 +141,8 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
         if (sizeok != Sizeok.none)
             return true;
 
+        fieldsState = SemState.In;
+
         //printf("determineFields() %s, fields.dim = %d\n", toChars(), fields.dim);
         // determineFields can be called recursively from one of the fields's v.semantic
         fields.setDim(0);
@@ -160,6 +162,12 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
             // Return in case a recursive determineFields triggered by v.semantic already finished
             if (ad.sizeok != Sizeok.none)
                 return 1;
+
+            if (v.typeState == SemState.Defer)
+            {
+                ad.fieldsState = SemState.Defer;
+                return 1;
+            }
 
             if (v.aliassym)
                 return 0;   // If this variable was really a tuple, skip it.
@@ -203,6 +211,9 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
 
         if (sizeok != Sizeok.done)
             sizeok = Sizeok.fwd;
+
+        if (fieldsState != SemState.Defer)
+            fieldsState = SemState.Done;
 
         return true;
     }

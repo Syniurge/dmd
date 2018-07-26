@@ -4108,6 +4108,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         if (!sd.determineFields())
         {
+            if (sd.fieldsState == SemState.Defer)
+                return defer();
             if (sd.type.ty != Terror)
             {
                 sd.error(sd.loc, "circular or forward reference");
