@@ -1276,6 +1276,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         Dsymbol scopesym;
         bool confident;
         Dsymbol s = sc.search(exp.loc, exp.ident, &scopesym, IgnoreNone, &confident);
+        if (!confident)
+            return setDefer();
         if (s)
         {
             if (s.errors)
