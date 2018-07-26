@@ -143,7 +143,10 @@ extern (C++) abstract class AttribDeclaration : Dsymbol
         }
 
         if (addMemberState != SemState.Defer)
+        {
             addMemberState = SemState.Done;
+            Module.dprogress++;
+        }
     }
 
     override void importAll(Scope* sc)
@@ -865,7 +868,8 @@ extern (C++) class ConditionalDeclaration : AttribDeclaration
     override Dsymbols* include(Scope* sc)
     {
         //printf("ConditionalDeclaration::include(sc = %p) scope = %p\n", sc, scope);
-        includeState = SemState.In;
+        if (includeState != SemState.Done)
+            includeState = SemState.In;
 
         if (errors)
             return null;
@@ -877,7 +881,11 @@ extern (C++) class ConditionalDeclaration : AttribDeclaration
             includeState = SemState.Defer;
             return null;
         }
-        includeState = SemState.Done;
+        if (includeState != SemState.Done)
+        {
+            includeState = SemState.Done;
+            Module.dprogress++;
+        }
         return result ? decl : elsedecl;
     }
 
