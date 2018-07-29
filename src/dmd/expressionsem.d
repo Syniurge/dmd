@@ -48,6 +48,7 @@ import dmd.identifier;
 import dmd.imphint;
 import dmd.inline;
 import dmd.intrange;
+import dmd.members;
 import dmd.mtype;
 import dmd.nspace;
 import dmd.opover;
@@ -1979,7 +1980,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 result = exp;
                 return;
             }
-            ti.dsymbolSemantic(sc);
+            ti.determineSymtab(sc);
             if (!ti.inst || ti.errors)
                 return setError();
             if (ti.symtabState == SemState.Defer) // toAlias() will be too early

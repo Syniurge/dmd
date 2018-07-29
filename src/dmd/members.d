@@ -250,6 +250,7 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                     }
                     else
                         tempinst.inst = tempinst;
+                    tempinst.symtabState = SemState.Done;
                     tempinst.errors = true;
                     return;
                 }

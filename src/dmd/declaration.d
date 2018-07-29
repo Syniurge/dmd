@@ -895,13 +895,13 @@ extern (C++) final class AliasDeclaration : Declaration
         }
         else
         {
-            if (_import && _import._scope)
-            {
-                /* If this is an internal alias for selective/renamed import,
-                 * load the module first.
-                 */
-                _import.dsymbolSemantic(null);
-            }
+//             if (_import && _import._scope)
+//             {
+//                 /* If this is an internal alias for selective/renamed import,
+//                  * load the module first.
+//                  */
+//                 _import.dsymbolSemantic(null);
+//             }
             if (_scope)
             {
                 aliasSemantic(this, _scope);

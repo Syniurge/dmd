@@ -1263,7 +1263,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                     dsym.inuse++;
                     if (ei)
                     {
-                        Expression exp = ei.exp.syntaxCopy();
+                        Expression exp = ei.exp/+.syntaxCopy()+/;
 
                         bool needctfe = dsym.isDataseg() || (dsym.storage_class & STC.manifest);
                         if (needctfe)

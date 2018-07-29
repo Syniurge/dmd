@@ -7569,7 +7569,7 @@ extern (C++) class TemplateInstance : ScopeDsymbol
             //printf("test3: enclosing = %d, s.parent = %s\n", enclosing, s.parent.toChars());
             s.dsymbolSemantic(sc2);
             //printf("test4: enclosing = %d, s.parent = %s\n", enclosing, s.parent.toChars());
-            Module.runDeferredSemantic();
+//             Module.runDeferredSemantic(); // FWDREF FIXME this vanilla line shouldn't be needed anymore
         }
     }
 

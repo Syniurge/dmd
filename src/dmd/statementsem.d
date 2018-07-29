@@ -4084,8 +4084,9 @@ else
         {
             Import s = (*imps.imports)[i].isImport();
             s.makeAliases(sc, null);
-            s.dsymbolSemantic(sc);
-            Module.addDeferredSemantic2(s);     // https://issues.dlang.org/show_bug.cgi?id=14666
+            s.setScope(sc);
+//             s.dsymbolSemantic(sc);
+//             Module.addDeferredSemantic2(s);     // https://issues.dlang.org/show_bug.cgi?id=14666 // FWDREF FIXME vanilla lines that shouldn't be needed
             sc.insert(s);
 
             foreach (aliasdecl; s.aliasdecls)
