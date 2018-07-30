@@ -460,6 +460,15 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         this.sc = sc;
     }
 
+    private bool semanticOrDefer(Loc loc, ref Type t)
+    {
+        auto tnew = t.typeSemantic(loc, sc);
+        if (tnew.ty == Tdefer)
+            return true;
+        t = tnew;
+        return false;
+    }
+
     override void visit(Dsymbol dsym)
     {
         dsym.error("%p has no semantic routine", dsym);
@@ -2833,6 +2842,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (!sc || funcdecl.errors)
             return;
 
+        void defer()
+        {
+            funcdecl._scope._module.addDeferredSemantic(funcdecl);
+        }
+
         funcdecl.parent = sc.parent;
         Dsymbol parent = funcdecl.toParent();
 
@@ -2892,6 +2906,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (!funcdecl.type.deco)
         {
             sc = sc.push();
+            scope(exit) sc = sc.pop();
             sc.stc |= funcdecl.storage_class & (STC.disable | STC.deprecated_); // forward to function type
 
             TypeFunction tf = funcdecl.type.toTypeFunction();
@@ -3004,8 +3019,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 stc |= STC.wild;
             funcdecl.type = funcdecl.type.addSTC(stc);
 
-            funcdecl.type = funcdecl.type.typeSemantic(funcdecl.loc, sc);
-            sc = sc.pop();
+            if (semanticOrDefer(funcdecl.loc,funcdecl.type))
+                return defer();
         }
         if (funcdecl.type.ty != Tfunction)
         {
@@ -4084,6 +4099,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             return;
 
         sd.semanticRun = PASS.semantic;
+            sd.sem1State = SemState.Done;
 
         if (!sd.members) // if opaque declaration
         {
@@ -4093,6 +4109,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
         void defer()
         {
+            sd.sem1State = SemState.Defer;
             sd._scope._module.addDeferredSemantic(sd);
         }
 

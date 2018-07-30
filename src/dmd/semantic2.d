@@ -584,6 +584,15 @@ private extern(C++) final class Semantic2Visitor : Visitor
         if (!ad.members)
             return;
 
+        void defer()
+        {
+            Module.addDeferredSemantic2(ad);
+        }
+
+        ad.dsymbolSemantic(sc);
+        if (ad.sem1State == SemState.Defer)
+            return defer();
+
         if (ad.semanticRun < PASS.semanticdone)
         {
             ad.error("has forward references");

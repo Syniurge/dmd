@@ -2574,8 +2574,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         if (!e.type)
             e.type = e.var.type;
         if (e.type && !e.type.deco)
-            e.type = e.type.typeSemantic(e.loc, sc);
-        assert(e.type.ty != Tdefer); // FWDREF FIXME: this might happen
+            if (semanticOrDefer(e.loc, e.type))
+                return setDefer();
 
         /* Fix for 1161 doesn't work because it causes protection
          * problems when instantiating imported templates passing private

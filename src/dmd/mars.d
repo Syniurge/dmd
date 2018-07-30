@@ -816,6 +816,15 @@ private int tryMain(size_t argc, const(char)** argv)
     Module.runDeferredSemantic2();
     if (global.errors)
         fatal();
+    if (Module.deferred2.dim)
+    {
+        for (size_t i = 0; i < Module.deferred2.dim; i++)
+        {
+            Dsymbol sd = Module.deferred2[i];
+            sd.error("unable to resolve forward reference in definition");
+        }
+        //fatal();
+    }
 
     // Do pass 3 semantic analysis
     foreach (m; modules)
@@ -841,6 +850,15 @@ private int tryMain(size_t argc, const(char)** argv)
     Module.runDeferredSemantic3();
     if (global.errors)
         fatal();
+    if (Module.deferred3.dim)
+    {
+        for (size_t i = 0; i < Module.deferred3.dim; i++)
+        {
+            Dsymbol sd = Module.deferred3[i];
+            sd.error("unable to resolve forward reference in definition");
+        }
+        //fatal();
+    }
 
     // Scan for functions to inline
     if (global.params.useInline)

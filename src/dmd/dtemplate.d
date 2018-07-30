@@ -771,7 +771,7 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
             fd.vthis = fd.declareThis(scx, fd.isThis());
         }
 
-        Expression e = constraint.syntaxCopy();
+        Expression e = constraint.syntaxCopy(); // FWDREF FIXME NOTE: this is correct, but copying template instances, which leads to endless deferring..
 
         import dmd.staticcond;
 
