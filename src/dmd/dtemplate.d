@@ -40,6 +40,7 @@ import dmd.init;
 import dmd.initsem;
 import dmd.mtype;
 import dmd.opover;
+import dmd.root.aav;
 import dmd.root.outbuffer;
 import dmd.root.rootobject;
 import dmd.semantic2;
@@ -771,7 +772,9 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
             fd.vthis = fd.declareThis(scx, fd.isThis());
         }
 
-        Expression e = constraint.syntaxCopy(); // FWDREF FIXME NOTE: this is correct, but copying template instances, which leads to endless deferring..
+        if (!ti.constraint[this])
+            *ti.constraint.getLvalue(this) = constraint.syntaxCopy();
+        Expression e = ti.constraint[this];
 
         import dmd.staticcond;
 
@@ -947,7 +950,7 @@ extern (C++) final class TemplateDeclaration : ScopeDsymbol
             }
 
             // TODO: dedtypes => ti.tiargs ?
-            if (!evaluateConstraint(ti, sc, paramscope, dedtypes, fd))
+            if (!evaluateConstraint(ti, sc, paramscope, dedtypes, fd)) // FWDREF FIXME constraintState check
                 goto Lnomatch;
         }
 
@@ -5986,6 +5989,9 @@ extern (C++) class TemplateInstance : ScopeDsymbol
     TemplateInstance tinst;     // enclosing template instance
     TemplateInstance tnext;     // non-first instantiated instances
     Module minst;               // the top module that instantiated this instance
+
+    // FWDREF additions
+    AssocArray!(TemplateDeclaration, Expression) constraint;
 
     extern (D) this(const ref Loc loc, Identifier ident, Objects* tiargs)
     {
