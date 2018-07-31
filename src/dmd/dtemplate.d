@@ -2337,6 +2337,7 @@ extern (C++) final class TypeDeduced : Type
     }
 }
 
+alias ResolveState = AssocArray!(TemplateDeclaration, TemplateInstance);
 
 /*************************************************
  * Given function arguments, figure out which template function
@@ -2350,9 +2351,10 @@ extern (C++) final class TypeDeduced : Type
  *      tthis       = if !NULL, the 'this' pointer argument
  *      fargs       = arguments to function
  *      pMessage    = address to store error message, or null
+ *      state       = optional state to store TemplateDeclaration/Instance correspondances for deferred calls
  */
 void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiargs,
-    Type tthis, Expressions* fargs, const(char)** pMessage = null)
+    Type tthis, Expressions* fargs, const(char)** pMessage = null, ResolveState* state = null)
 {
     version (none)
     {
@@ -2694,8 +2696,16 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
 
             /* This is a 'dummy' instance to evaluate constraint properly.
              */
-            auto ti = new TemplateInstance(loc, td, tiargs);
-            ti.parent = td.parent;  // Maybe calculating valid 'enclosing' is unnecessary.
+            TemplateInstance ti;
+            if (state && (*state)[td] !is null)
+                ti = (*state)[td];
+            else
+            {
+                ti = new TemplateInstance(loc, td, tiargs);
+                ti.parent = td.parent;  // Maybe calculating valid 'enclosing' is unnecessary.
+                if (state)
+                    *(*state).getLvalue(td) = ti;
+            }
 
             auto fd = f;
             int x = td.deduceFunctionTemplateMatch(ti, sc, fd, tthis, fargs);

@@ -5497,6 +5497,8 @@ extern (C++) final class CallExp : UnaExp
     FuncDeclaration f;      // symbol to call
     bool directcall;        // true if a virtual call is devirtualized
 
+    ResolveState resolveState; // FWDREF
+
     extern (D) this(const ref Loc loc, Expression e, Expressions* exps)
     {
         super(loc, TOK.call, __traits(classInstanceSize, CallExp), e);
