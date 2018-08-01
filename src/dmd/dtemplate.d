@@ -2337,7 +2337,11 @@ extern (C++) final class TypeDeduced : Type
     }
 }
 
-alias ResolveState = AssocArray!(TemplateDeclaration, TemplateInstance);
+struct ResolveState
+{
+    AssocArray!(TemplateDeclaration, TemplateInstance) tempinsts;
+    bool isDeferred;
+}
 
 /*************************************************
  * Given function arguments, figure out which template function
@@ -2351,7 +2355,7 @@ alias ResolveState = AssocArray!(TemplateDeclaration, TemplateInstance);
  *      tthis       = if !NULL, the 'this' pointer argument
  *      fargs       = arguments to function
  *      pMessage    = address to store error message, or null
- *      state       = optional state to store TemplateDeclaration/Instance correspondances for deferred calls
+ *      state       = optional, stores TemplateDeclaration/Instance correspondances for deferred calls
  */
 void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiargs,
     Type tthis, Expressions* fargs, const(char)** pMessage = null, ResolveState* state = null)
@@ -2388,6 +2392,8 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
     TemplateInstance ti_best;
     MATCH ta_last = m.last != MATCH.nomatch ? MATCH.exact : MATCH.nomatch;
     Type tthis_best;
+    if (state)
+        state.isDeferred = false;
 
     int applyFunction(FuncDeclaration fd)
     {
@@ -2697,22 +2703,27 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
             /* This is a 'dummy' instance to evaluate constraint properly.
              */
             TemplateInstance ti;
-            if (state && (*state)[td] !is null)
-                ti = (*state)[td];
+            if (state && state.tempinsts[td] !is null)
+                ti = state.tempinsts[td];
             else
             {
                 ti = new TemplateInstance(loc, td, tiargs);
                 ti.parent = td.parent;  // Maybe calculating valid 'enclosing' is unnecessary.
                 if (state)
-                    *(*state).getLvalue(td) = ti;
+                    *state.tempinsts.getLvalue(td) = ti;  // Preserve created dummy template instances for deferred functionResolve calls
             }
 
             auto fd = f;
             int x = td.deduceFunctionTemplateMatch(ti, sc, fd, tthis, fargs);
             if (ti.constraintState == SemState.In || ti.constraintState == SemState.Defer)
             {
-                m.setDeferred();
-                return 1;
+                if (state)
+                {
+                    state.isDeferred = true;
+                    return 1;
+                }
+                else
+                    assert(false); // FWDREF FIXME temporary to catch cases
             }
             MATCH mta = cast(MATCH)(x >> 4);
             MATCH mfa = cast(MATCH)(x & 0xF);
@@ -2824,6 +2835,13 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
         return 0;
     }, sc);
 
+    if (state)
+    {
+        if (state.isDeferred)
+            goto Lnomatch;
+//         state.tempinsts.aa = null;  // may be freed
+    }
+
     //printf("td_best = %p, m.lastf = %p\n", td_best, m.lastf);
     if (td_best && ti_best && m.count == 1)
     {
@@ -2888,7 +2906,7 @@ void functionResolve(Match* m, Dsymbol dstart, Loc loc, Scope* sc, Objects* tiar
         // or found matches were ambiguous.
         assert(m.count >= 1);
     }
-    else if (!m.isDeferred())
+    else
     {
     Lnomatch:
         m.count = 0;

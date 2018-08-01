@@ -3480,9 +3480,8 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             {
                 s = (cast(TemplateExp)exp.e1).td;
             L2:
-                bool defer;
-                exp.f = resolveFuncCall(exp.loc, sc, s, tiargs, null, exp.arguments, 0, &defer);
-                if (defer)
+                exp.f = resolveFuncCall(exp.loc, sc, s, tiargs, null, exp.arguments, 0, &exp.resolveState);
+                if (exp.resolveState.isDeferred)
                     return setDefer();
                 if (!exp.f || exp.f.errors)
                     return setError();

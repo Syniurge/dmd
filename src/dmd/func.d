@@ -2631,11 +2631,12 @@ private const(char)* prependSpace(const(char)* str)
  *      fargs =         arguments to function
  *      flags =         1: do not issue error message on no match, just return NULL
  *                      2: overloadResolve only
+ *      state =         optional, stores TemplateDeclaration/Instance correspondances for deferred calls
  * Returns:
  *      if match is found, then function symbol, else null
  */
 extern (C++) FuncDeclaration resolveFuncCall(const ref Loc loc, Scope* sc, Dsymbol s,
-    Objects* tiargs, Type tthis, Expressions* fargs, int flags = 0, bool* defer = null)
+    Objects* tiargs, Type tthis, Expressions* fargs, int flags = 0, ResolveState* state = null)
 {
     if (!s)
         return null; // no match
@@ -2669,14 +2670,10 @@ extern (C++) FuncDeclaration resolveFuncCall(const ref Loc loc, Scope* sc, Dsymb
     bool isConfidenceBeingBoosted = Scope.confidenceBoost; // FWDREF FIXME REMOVE
 
     const(char)* failMessage;
-    functionResolve(&m, s, loc, sc, tiargs, tthis, fargs, &failMessage);
+    functionResolve(&m, s, loc, sc, tiargs, tthis, fargs, &failMessage, state);
 
-    if (m.isDeferred())
-    {
-        if (defer)
-            *defer = true;
+    if (state && state.isDeferred)
         return null;
-    }
 
     if (m.last > MATCH.nomatch && m.lastf)
     {
