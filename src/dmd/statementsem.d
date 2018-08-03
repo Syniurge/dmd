@@ -249,7 +249,7 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
                     continue;
                 }
                 s = s.statementSemantic(sc);
-                if (s.isDeferStatement())
+                if (s && s.isDeferStatement())
                     return setDefer();
                 (*cs.statements)[i] = s;
                 if (s)
@@ -2172,7 +2172,10 @@ else
             auto de = new DeclarationExp(ifs.loc, ifs.match);
             auto ve = new VarExp(ifs.loc, ifs.match);
             ifs.condition = new CommaExp(ifs.loc, de, ve);
-            ifs.condition = ifs.condition.expressionSemantic(scd);
+            auto cond = ifs.condition.expressionSemantic(scd);
+            if (cond.op == TOKdefer)
+                return setDefer();
+            ifs.condition = cond;
 
             if (ifs.match.edtor)
             {
