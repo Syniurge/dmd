@@ -2004,6 +2004,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
             if (auto v = s.isVarDeclaration())
             {
+                v.dsymbolSemantic(null);
+                if (v.typeState == SemState.Defer)
+                    return setDefer();
                 if (!v.type)
                 {
                     exp.error("forward reference of %s `%s`", v.kind(), v.toChars());
