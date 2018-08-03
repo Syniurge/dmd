@@ -236,6 +236,16 @@ private extern(C++) final class Semantic2Visitor : Visitor
         if (vd.semanticRun < PASS.semanticdone && vd.inuse)
             return;
 
+        if (vd.semanticRun < PASS.semanticdone)
+            vd.dsymbolSemantic(null);
+
+        void defer()
+        {
+            Module.addDeferredSemantic2(vd);
+        }
+        if (vd.semanticRun < PASS.semanticdone)
+            return defer();
+
         //printf("VarDeclaration::semantic2('%s')\n", toChars());
 
         if (vd.aliassym)        // if it's a tuple
