@@ -1272,7 +1272,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                  * subsequent type, such as an array dimension, before semantic2()
                  * gets ordinarily run, try to run semantic2() now.
                  * Ignore failure.
-                 */ // FWDREF FIXME & NOTE: Geeze, did this really warrant code duplication?
+                 */ // FWDREF FIXME & NOTE: Horrible code duplication
                 if (!inferred)
                 {
                     uint errors = global.errors;

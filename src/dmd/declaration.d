@@ -1463,7 +1463,7 @@ extern (C++) class VarDeclaration : Declaration
                 global.gag = 0;
         }
 
-        if (_scope)
+        if (_scope && !_scope.func) // FWDREF NOTE/FIXME: !_scope.func wasn't here before, and is needed since semantic(DeclarationExp) call setScope. But although this sticks to the old behavior and avoid breakage, it doesn't really make sense and there is a lot of duplicate code regarding initializers
         {
             inuse++;
             auto vinit = _init.initializerSemantic(_scope, type, INITinterpret);
