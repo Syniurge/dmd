@@ -1458,7 +1458,7 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
             if (!loadErrored)
             {
-                imp.mod.dsymbolSemantic(null);
+                imp.mod.determineSymtab(null); // FWDREF FIXME search() calls determineSymtab, so this shouldn't be necessary
             }
 
             if (imp.mod.needmoduleinfo)
