@@ -41,7 +41,7 @@ import dmd.utils;
  *      true if evaluates to true
  */
 
-bool evalStaticCondition(Scope* sc, Expression exp, Expression e, ref uint errors)
+bool evalStaticCondition(Scope* sc, Expression exp, ref Expression e, ref uint errors)
 {
     if (e.op == TOK.andAnd || e.op == TOK.orOr)
     {
@@ -77,19 +77,18 @@ bool evalStaticCondition(Scope* sc, Expression exp, Expression e, ref uint error
     uint nerrors = global.errors;
 
     sc = sc.startCTFE();
+    scope(exit) sc = sc.endCTFE();
     sc.flags |= SCOPE.condition;
 
-    e = e.expressionSemantic(sc);
-    e = resolveProperties(sc, e);
-
-    sc = sc.endCTFE();
-    e = e.optimize(WANTvalue);
-
-    if (e.op == TOKdefer)
+    auto ex = e.expressionSemantic(sc);
+    if (ex.op == TOKdefer)
     {
         errors = 2;
         return false;
     }
+    e = resolveProperties(sc, ex);
+
+    e = e.optimize(WANTvalue);
 
     if (nerrors != global.errors ||
         e.op == TOK.error ||
