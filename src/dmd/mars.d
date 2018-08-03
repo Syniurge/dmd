@@ -792,6 +792,7 @@ private int tryMain(size_t argc, const(char)** argv)
             message("semantic  %s", m.toChars());
         m.dsymbolSemantic(null);
     }
+    Module.modules.lookup(Id.object).dsymbolSemantic(null); // FWDREF NOTE: TypeInfo_XXXXX need to be semantic'd, they aren't since imports only call determineSymtab
     //if (global.errors)
     //    fatal();
     Module.dprogress = 1;
