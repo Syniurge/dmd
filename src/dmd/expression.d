@@ -2450,6 +2450,8 @@ extern (C++) abstract class Expression : RootObject
 
         if (!t.isBoolean())
         {
+            if (tb.ty == Tdefer)
+                return DeferExp.deferexp;
             if (tb != Type.terror)
                 error("expression `%s` of type `%s` does not have a boolean value", toChars(), t.toChars());
             return new ErrorExp();
