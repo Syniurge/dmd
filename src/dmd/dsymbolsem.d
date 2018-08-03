@@ -614,20 +614,27 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (!dsym.type)
         {
             dsym.inuse++;
+            scope(exit) dsym.inuse--;
 
             // Infering the type requires running semantic,
             // so mark the scope as ctfe if required
             bool needctfe = (dsym.storage_class & (STC.manifest | STC.static_)) != 0;
             if (needctfe)
                 sc = sc.startCTFE();
-
-            //printf("inferring type for %s with init %s\n", toChars(), _init.toChars());
-            dsym._init = dsym._init.inferType(sc);
-            dsym.type = dsym._init.initializerToExpression().type;
-            if (needctfe)
+            scope(exit) if (needctfe)
                 sc = sc.endCTFE();
 
-            dsym.inuse--;
+            //printf("inferring type for %s with init %s\n", toChars(), _init.toChars());
+            auto vinit = dsym._init.inferType(sc);
+            if (vinit.isDeferInitializer())
+            {
+                dsym.typeState = SemState.Defer;
+                return defer();
+            }
+            dsym._init = vinit;
+            dsym.type = dsym._init.initializerToExpression().type;
+            assert(dsym.type.ty != Tdefer); // FWDREF FIXME temporary
+
             inferred = 1;
 
             /* This is a kludge to support the existing syntax for RAII
