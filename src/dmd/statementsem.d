@@ -2187,8 +2187,10 @@ else
             if (ifs.condition.op == TOK.dotIdentifier)
                 (cast(DotIdExp)ifs.condition).noderef = true;
 
-            ifs.condition = ifs.condition.expressionSemantic(scd);
-            ifs.condition = resolveProperties(scd, ifs.condition);
+            auto cond = ifs.condition.expressionSemantic(scd);
+            if (cond.op == TOKdefer)
+                return setDefer();
+            ifs.condition = resolveProperties(scd, cond);
             ifs.condition = ifs.condition.addDtorHook(scd);
         }
         if (checkNonAssignmentArrayOp(ifs.condition))
