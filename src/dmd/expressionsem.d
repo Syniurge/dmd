@@ -3728,7 +3728,7 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             s.parent = sc.parent;
         }
 
-        if (!s._scope && !s.isVarDeclaration() /* getConstInitializer() wants to interpret the initializer if _scope is set.. FIXME? */)
+        if (!s._scope/+ && !s.isVarDeclaration()+/ /* getConstInitializer() wants to interpret the initializer if _scope is set.. FIXME? */)
             s.setScope(sc); // FWDREF experimental
 
         //printf("inserting '%s' %p into sc = %p\n", s.toChars(), s, sc);
