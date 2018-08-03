@@ -3036,8 +3036,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             result = exp.e1;
             return;
         }
-        if (auto err = arrayExpressionSemantic(exp.arguments, sc) | preFunctionParameters(sc, exp.arguments))
-            return setErrorOrDefer(err);
+
+        auto argerr = arrayExpressionSemantic(exp.arguments, sc);
+        if (!argerr)
+            argerr = preFunctionParameters(sc, exp.arguments);
+        if (argerr)
+            return setErrorOrDefer(argerr);
 
         // Check for call operator overload
         if (t1)
