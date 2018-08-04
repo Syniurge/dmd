@@ -827,9 +827,7 @@ extern (C++) final class CompileStatement : Statement
 
         auto defer()
         {
-            auto a = new Statements();
-            a.push(DeferStatement.deferstmt);
-            return a;
+            return null;
         }
 
         auto e = semanticString(sc, exp, "argument to mixin");

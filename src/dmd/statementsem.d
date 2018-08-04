@@ -219,7 +219,7 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         //printf("CompileStatement::semantic() %s\n", exp.toChars());
         Statements* a = cs.flatten(sc);
         if (!a)
-            return;
+            return setDefer();
         Statement s = new CompoundStatement(cs.loc, a);
         result = s.statementSemantic(sc);
     }
