@@ -1516,15 +1516,17 @@ extern (C++) Expression resolveOpDollar(Scope* sc, ArrayExp ae, IntervalExp ie, 
  *  exp = Expression which expected as a string
  *  s   = What the string is expected for, will be used in error diagnostic.
  * Returns:
- *  String literal, or `null` if error happens.
+ *  String literal, DeferExp if deferred, or `null` if error happens.
  */
-StringExp semanticString(Scope *sc, Expression exp, const char* s)
+Expression semanticString(Scope *sc, Expression exp, const char* s)
 {
     sc = sc.startCTFE();
     exp = exp.expressionSemantic(sc);
     exp = resolveProperties(sc, exp);
     sc = sc.endCTFE();
 
+    if (exp.op == TOKdefer)
+        return exp;
     if (exp.op == TOK.error)
         return null;
 
@@ -1532,6 +1534,8 @@ StringExp semanticString(Scope *sc, Expression exp, const char* s)
     if (exp.type.isString())
     {
         e = e.ctfeInterpret();
+        if (e.op == TOKdefer)
+            return e;
         if (e.op == TOK.error)
             return null;
     }

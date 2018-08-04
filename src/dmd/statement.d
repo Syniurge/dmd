@@ -825,9 +825,19 @@ extern (C++) final class CompileStatement : Statement
             return a;
         }
 
-        auto se = semanticString(sc, exp, "argument to mixin");
-        if (!se)
+        auto defer()
+        {
+            auto a = new Statements();
+            a.push(DeferStatement.deferstmt);
+            return a;
+        }
+
+        auto e = semanticString(sc, exp, "argument to mixin");
+        if (!e)
             return errorStatements();
+        if (e.op == TOKdefer)
+            return defer();
+        auto se = cast(StringExp)e;
         se = se.toUTF8(sc);
 
         uint errors = global.errors;

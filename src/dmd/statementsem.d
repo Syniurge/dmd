@@ -2334,9 +2334,12 @@ else
                 }
                 else
                 {
-                    auto se = semanticString(sc, (*ps.args)[0], "library name");
-                    if (!se)
+                    auto e = semanticString(sc, (*ps.args)[0], "library name");
+                    if (!e)
                         return setError();
+                    if (e.op == TOKdefer)
+                        return defer();
+                    auto se = cast(StringExp)e;
 
                     if (global.params.verbose)
                     {

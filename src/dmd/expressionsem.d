@@ -4313,9 +4313,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
     private Expression compileIt(CompileExp exp)
     {
         //printf("CompileExp::compileIt('%s')\n", exp.toChars());
-        auto se = semanticString(sc, exp.e1, "argument to mixin"); // FWDREF TODO
-        if (!se)
+        auto ex = semanticString(sc, exp.e1, "argument to mixin");
+        if (!ex)
             return null;
+        if (ex.op == TOKdefer)
+            return DeferExp.deferexp;
+        auto se = cast(StringExp)ex;
         se = se.toUTF8(sc);
 
         uint errors = global.errors;
@@ -4357,9 +4360,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             printf("ImportExp::semantic('%s')\n", e.toChars());
         }
 
-        auto se = semanticString(sc, e.e1, "file name argument"); // FWDREF TODO
-        if (!se)
+        auto ex = semanticString(sc, e.e1, "file name argument");
+        if (!ex)
             return setError();
+        if (ex.op == TOKdefer)
+            return setDefer();
+        auto se = cast(StringExp)ex;
         se = se.toUTF8(sc);
 
         auto namez = se.toStringz().ptr;

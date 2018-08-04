@@ -1656,6 +1656,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
     override void visit(PragmaDeclaration pd)
     {
+        void defer() { assert(false); } // FWDREF FIXME
+
         // Should be merged with PragmaStatement
         //printf("\tPragmaDeclaration::semantic '%s'\n", pd.toChars());
         if (pd.ident == Id.msg)
@@ -1669,6 +1671,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                     e = e.expressionSemantic(sc);
                     e = resolveProperties(sc, e);
                     sc = sc.endCTFE();
+                    if (e.op == TOKdefer)
+                        return defer();
                     // pragma(msg) is allowed to contain types as well as expressions
                     if (e.type && e.type.ty == Tvoid)
                     {
@@ -1700,9 +1704,12 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 pd.error("string expected for library name");
             else
             {
-                auto se = semanticString(sc, (*pd.args)[0], "library name");
-                if (!se)
+                auto e = semanticString(sc, (*pd.args)[0], "library name");
+                if (!e)
                     goto Lnodecl;
+                if (e.op == TOKdefer)
+                    return defer();
+                auto se = cast(StringExp)e;
                 (*pd.args)[0] = se;
 
                 auto name = cast(char*)mem.xmalloc(se.len + 1);
@@ -1762,9 +1769,12 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
                 goto Ldecl;
             }
 
-            auto se = semanticString(sc, (*pd.args)[0], "mangled name");
-            if (!se)
+            auto e = semanticString(sc, (*pd.args)[0], "mangled name");
+            if (!e)
                 goto Ldecl;
+            if (e.op == TOKdefer)
+                return defer();
+            auto se = cast(StringExp)e;
             (*pd.args)[0] = se; // Will be used later
 
             if (!se.len)
@@ -1900,10 +1910,19 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
     private Dsymbols* compileIt(CompileDeclaration cd)
     {
-        //printf("CompileDeclaration::compileIt(loc = %d) %s\n", cd.loc.linnum, cd.exp.toChars());
-        auto se = semanticString(sc, cd.exp, "argument to mixin");
-        if (!se)
+        auto defer()
+        {
+            cd.includeState = SemState.Defer;
             return null;
+        }
+
+        //printf("CompileDeclaration::compileIt(loc = %d) %s\n", cd.loc.linnum, cd.exp.toChars());
+        auto e = semanticString(sc, cd.exp, "argument to mixin");
+        if (!e)
+            return null;
+        if (e.op == TOKdefer)
+            return defer();
+        auto se = cast(StringExp)e;
         se = se.toUTF8(sc);
 
         uint errors = global.errors;
