@@ -491,9 +491,14 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
          */
         const inLoopSave = sc.inLoop;
         sc.inLoop = true;
+        scope(exit) sc.inLoop = inLoopSave;
         if (ds._body)
-            ds._body = ds._body.semanticScope(sc, ds, ds);
-        sc.inLoop = inLoopSave;
+        {
+            auto sbody = ds._body.semanticScope(sc, ds, ds);
+            if (sbody.isDeferStatement())
+                return setDefer();
+            ds._body = sbody;
+        }
 
         if (ds.condition.op == TOK.dotIdentifier)
             (cast(DotIdExp)ds.condition).noderef = true;
@@ -501,7 +506,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         // check in syntax level
         ds.condition = checkAssignmentAsCondition(ds.condition);
 
-        ds.condition = ds.condition.expressionSemantic(sc);
+        if (semanticOrDefer(ds.condition))
+            return setDefer();
         ds.condition = resolveProperties(sc, ds.condition);
         if (checkNonAssignmentArrayOp(ds.condition))
             ds.condition = new ErrorExp();
@@ -568,6 +574,7 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         }
         sc = sc.push(fs.sds);
         sc.inLoop = true;
+        scope(exit) sc.pop();
 
         if (fs.condition)
         {
@@ -577,7 +584,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
             // check in syntax level
             fs.condition = checkAssignmentAsCondition(fs.condition);
 
-            fs.condition = fs.condition.expressionSemantic(sc);
+            if (semanticOrDefer(fs.condition))
+                return setDefer();
             fs.condition = resolveProperties(sc, fs.condition);
             if (checkNonAssignmentArrayOp(fs.condition))
                 fs.condition = new ErrorExp();
@@ -589,7 +597,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         if (fs.increment)
         {
             CommaExp.allow(fs.increment);
-            fs.increment = fs.increment.expressionSemantic(sc);
+            if (semanticOrDefer(fs.increment))
+                return setDefer();
             fs.increment = resolveProperties(sc, fs.increment);
             if (checkNonAssignmentArrayOp(fs.increment))
                 fs.increment = new ErrorExp();
@@ -600,9 +609,12 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         sc.sbreak = fs;
         sc.scontinue = fs;
         if (fs._body)
-            fs._body = fs._body.semanticNoScope(sc);
-
-        sc.pop();
+        {
+            auto sbody = fs._body.semanticNoScope(sc);
+            if (sbody.isDeferStatement())
+                return setDefer();
+            fs._body = sbody;
+        }
 
         if (fs.condition && fs.condition.op == TOK.error ||
             fs.increment && fs.increment.op == TOK.error ||
