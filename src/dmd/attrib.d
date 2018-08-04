@@ -1127,8 +1127,6 @@ extern(C++) final class ForwardingAttribDeclaration: AttribDeclaration
 extern (C++) final class CompileDeclaration : AttribDeclaration
 {
     Expression exp;
-    ScopeDsymbol scopesym;
-    bool compiled;
 
     extern (D) this(const ref Loc loc, Expression exp)
     {
@@ -1148,6 +1146,11 @@ extern (C++) final class CompileDeclaration : AttribDeclaration
     {
         if (includeState == SemState.Done)
             return decl;
+
+        if (!sc)
+            sc = _scope;
+        if (!sc)
+            return null;  // might happen from .oneMember() called by TemplateDeclaration.__ctor()
 
         includeState = SemState.In;
 

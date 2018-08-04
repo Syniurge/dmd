@@ -212,11 +212,8 @@ class CompileDeclaration : public AttribDeclaration
 public:
     Expression *exp;
 
-    ScopeDsymbol *scopesym;
-    bool compiled;
-
     Dsymbol *syntaxCopy(Dsymbol *s);
-    void addMember(Scope *sc, ScopeDsymbol *sds);
+    Dsymbols *include(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };
