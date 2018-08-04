@@ -358,7 +358,6 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
                     printf("\timplement template instance %s '%s'\n", tempdecl.parent.toChars(), tempinst.toChars());
                     printf("\ttempdecl %s\n", tempdecl.toChars());
                 }
-                uint errorsave = global.errors;
 
                 tempinst.inst = tempinst;
                 tempinst.parent = tempinst.enclosing ? tempinst.enclosing : tempdecl.parent;
@@ -397,8 +396,13 @@ private extern(C++) final class DetermineSymtabVisitor : Visitor
             if (inst && !members)
                 return; // HACK this is for evalStaticCondition which sets inst to get genIdent() to work... terribly UGLY..
 
+            uint errorsave = global.errors;
+
             sc = tempdecl._scope; // FIXME: this isn't pretty.. but also a special case?
             super.visit(tempinst);
+
+            if (checkErrors(errorsave))
+                return;
 
             if (symtabState != SemState.Done)
                 return;

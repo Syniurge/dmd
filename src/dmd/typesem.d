@@ -2396,7 +2396,7 @@ private extern(C++) final class ResolveVisitor : Visitor
             *pt = Type.terror;
             return;
         }
-        else if (mt.tempinst.symtabState != SemState.Done)
+        else if (mt.tempinst.symtabState != SemState.Done && !mt.tempinst.errors)
             return setDefer();
 
         bool confident = true; // FWDREF FIXME

@@ -4933,8 +4933,8 @@ void templateInstanceSemantic(TemplateInstance tempinst, Scope* sc, Expressions*
 
     tempinst.determineSymtab(sc);
 
-    if (tempinst.inst != tempinst)
-        return; // existing instance
+    if (tempinst.inst != tempinst || tempinst.errors)
+        return; // existing instance or error'd
 
     TemplateDeclaration tempdecl = tempinst.tempdecl.isTemplateDeclaration();
 
@@ -5152,54 +5152,7 @@ Laftersemantic:
     sc2.pop();
     _scope.pop();
 
-    // Give additional context info if error occurred during instantiation
-    if (global.errors != errorsave)
-    {
-        if (!tempinst.errors)
-        {
-            if (!tempdecl.literal)
-                tempinst.error(tempinst.loc, "error instantiating");
-            if (tempinst.tinst)
-                tempinst.tinst.printInstantiationTrace();
-        }
-        tempinst.errors = true;
-        if (tempinst.gagged)
-        {
-            // Errors are gagged, so remove the template instance from the
-            // instance/symbol lists we added it to and reset our state to
-            // finish clean and so we can try to instantiate it again later
-            // (see https://issues.dlang.org/show_bug.cgi?id=4302 and https://issues.dlang.org/show_bug.cgi?id=6602).
-            tempdecl.removeInstance(tempinst.tempdecl_instance_idx);
-            if (tempinst.target_symbol_list)
-            {
-                // Because we added 'this' in the last position above, we
-                // should be able to remove it without messing other indices up.
-                assert((*tempinst.target_symbol_list)[tempinst.target_symbol_list_idx] == tempinst);
-                tempinst.target_symbol_list.remove(tempinst.target_symbol_list_idx);
-                tempinst.memberOf = null;                    // no longer a member
-            }
-            tempinst.semanticRun = PASS.init;
-            tempinst.inst = null;
-            tempinst.symtab = null;
-        }
-    }
-    else if (tempinst.errinst)
-    {
-        /* https://issues.dlang.org/show_bug.cgi?id=14541
-         * If the previous gagged instance had failed by
-         * circular references, currrent "error reproduction instantiation"
-         * might succeed, because of the difference of instantiated context.
-         * On such case, the cached error instance needs to be overridden by the
-         * succeeded instance.
-         */
-        //printf("replaceInstance()\n");
-        assert(tempinst.errinst.errors);
-        auto ti1 = TemplateInstanceBox(tempinst.errinst);
-        tempdecl.instances.remove(ti1);
-
-        auto ti2 = TemplateInstanceBox(tempinst);
-        tempdecl.instances[ti2] = tempinst;
-    }
+    tempinst.checkErrors(errorsave);
 
     static if (LOG)
     {
