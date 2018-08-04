@@ -127,7 +127,7 @@ extern (C++) Expression arrayOp(BinExp e, Scope* sc)
     auto args = new Expressions();
     buildArrayOp(sc, e, tiargs, args);
 
-    import dmd.dtemplate : TemplateDeclaration;
+    import dmd.dtemplate : TemplateDeclaration, TemplateInstance;
     __gshared TemplateDeclaration arrayOp;
     if (arrayOp is null)
     {
@@ -140,10 +140,9 @@ extern (C++) Expression arrayOp(BinExp e, Scope* sc)
         arrayOp = (cast(TemplateExp)id).td;
     }
 
-    auto fd = resolveFuncCall(e.loc, sc, arrayOp, tiargs, null, args);
-    if (!fd || fd.errors)
-        return new ErrorExp();
-    return new CallExp(e.loc, new VarExp(e.loc, fd, false), args).expressionSemantic(sc);
+    auto ti = new TemplateInstance(e.loc, arrayOp, tiargs);
+    ti.havetempdecl = false; // FWDREF HACK FIXME UGLY
+    return new CallExp(e.loc, new ScopeExp(e.loc, ti), args).expressionSemantic(sc);
 }
 
 /// ditto
