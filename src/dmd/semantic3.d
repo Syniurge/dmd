@@ -608,9 +608,11 @@ private extern(C++) final class Semantic3Visitor : Visitor
                 if (fnbody.isDeferStatement())
                 {
                     funcdecl.bodyState = SemState.Defer; // FWDREF TODO semantic3 should disappear, and this should go into a new method called bodySemantic()
-                    sc.instantiatingModule().addDeferredSemantic3(funcdecl);
                     funcdecl.fsc.setNoFree();
                     funcdecl.fbodysc.setNoFree();
+                    if (!sc.intypeof && !funcdecl.isFuncLiteralDeclaration())
+                        sc.instantiatingModule().addDeferredSemantic3(funcdecl);
+                    funcdecl.semanticRun = PASS.semantic2done; // FWDREF FIXME some code (e.g interpret(CallExp) still check whether semanticRun == semantic3 and erroneously consider that semantic3() is still going
                     return;
                 }
                     funcdecl.bodyState = SemState.Done;
