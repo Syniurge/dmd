@@ -1908,50 +1908,9 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         attribSemantic(sfd);
     }
 
-    private Dsymbols* compileIt(CompileDeclaration cd)
-    {
-        auto defer()
-        {
-            cd.includeState = SemState.Defer;
-            return null;
-        }
-
-        //printf("CompileDeclaration::compileIt(loc = %d) %s\n", cd.loc.linnum, cd.exp.toChars());
-        auto e = semanticString(sc, cd.exp, "argument to mixin");
-        if (!e)
-            return null;
-        if (e.op == TOKdefer)
-            return defer();
-        auto se = cast(StringExp)e;
-        se = se.toUTF8(sc);
-
-        uint errors = global.errors;
-        scope p = new Parser!ASTCodegen(cd.loc, sc._module, se.toStringz(), false);
-        p.nextToken();
-
-        auto d = p.parseDeclDefs(0);
-        if (p.errors)
-        {
-            assert(global.errors != errors);    // should have caught all these cases
-            return null;
-        }
-        if (p.token.value != TOK.endOfFile)
-        {
-            cd.exp.error("incomplete mixin declaration `%s`", se.toChars());
-            return null;
-        }
-        return d;
-    }
-
     override void visit(CompileDeclaration cd)
     {
         //printf("CompileDeclaration::semantic()\n");
-        if (!cd.compiled)
-        {
-            cd.decl = compileIt(cd);
-            cd.AttribDeclaration.addMember(sc, cd.scopesym);
-            cd.compiled = true;
-        }
         attribSemantic(cd);
     }
 

@@ -1144,12 +1144,49 @@ extern (C++) final class CompileDeclaration : AttribDeclaration
         return new CompileDeclaration(loc, exp.syntaxCopy());
     }
 
-    override void addMember(Scope* sc, ScopeDsymbol sds)
+    override Dsymbols* include(Scope* sc)
     {
-        addMemberState = SemState.Done; // FWDREF FIXME
+        if (includeState == SemState.Done)
+            return decl;
 
-        //printf("CompileDeclaration::addMember(sc = %p, sds = %p, memnum = %d)\n", sc, sds, memnum);
-        this.scopesym = sds;
+        includeState = SemState.In;
+
+        auto defer()
+        {
+            includeState = SemState.Defer;
+            return null;
+        }
+
+        auto e = semanticString(sc, exp, "argument to mixin");
+        if (!e)
+            return null;
+        if (e.op == TOKdefer)
+            return defer();
+        auto se = cast(StringExp)e;
+        se = se.toUTF8(sc);
+
+        import dmd.parse, dmd.astcodegen;
+
+        uint errors = global.errors;
+        scope p = new Parser!ASTCodegen(loc, sc._module, se.toStringz(), false);
+        p.nextToken();
+
+        auto d = p.parseDeclDefs(0);
+        if (p.errors)
+        {
+            assert(global.errors != errors);    // should have caught all these cases
+            return null;
+        }
+        if (p.token.value != TOK.endOfFile)
+        {
+            exp.error("incomplete mixin declaration `%s`", se.toChars());
+            return null;
+        }
+        decl = d;
+
+        includeState = SemState.Done;
+        Module.dprogress++;
+        return decl;
     }
 
     override const(char)* kind() const
