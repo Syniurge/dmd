@@ -105,7 +105,13 @@ bool evalStaticCondition(Scope* sc, Expression exp, ref Expression e, ref uint e
         return false;
     }
 
-    e = e.ctfeInterpret();
+    ex = e.ctfeInterpret();
+    if (ex.op == TOKdefer)
+    {
+        errors = 2;
+        return false;
+    }
+    e = ex;
 
     if (e.isBool(true))
         return true;
