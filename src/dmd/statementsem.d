@@ -150,6 +150,17 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
         result = new DeferStatement();
     }
 
+    private bool semanticOrDefer(ref Statement s, Scope* sc = null)
+    {
+        if (!sc)
+            sc = this.sc;
+        auto stmt = s.statementSemantic(sc);
+        if (stmt && stmt.isDeferStatement())
+            return true;
+        s = stmt;
+        return false;
+    }
+
     private bool semanticOrDefer(ref Expression exp)
     {
         auto e = exp.expressionSemantic(sc);
@@ -401,7 +412,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
             if (s)
             {
                 //printf("[%d]: %s\n", i, s.toChars());
-                s = s.statementSemantic(scd);
+                if (semanticOrDefer(s, scd))
+                    return setDefer();
                 if (s && !serror)
                     serror = s.isErrorStatement();
             }
@@ -423,6 +435,7 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
                 ss.sds.endlinnum = ss.endloc.linnum;
             }
             sc = sc.push(ss.sds);
+            scope(exit) sc.pop();
 
             Statements* a = ss.statement.flatten(sc);
             if (a)
@@ -430,7 +443,8 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
                 ss.statement = new CompoundStatement(ss.loc, a);
             }
 
-            ss.statement = ss.statement.statementSemantic(sc);
+            if (semanticOrDefer(ss.statement))
+                return setDefer();
             if (ss.statement)
             {
                 if (ss.statement.isErrorStatement())
@@ -453,8 +467,6 @@ private extern (C++) final class StatementSemanticVisitor : Visitor
                     ss.statement = new CompoundStatement(ss.loc, ss.statement, sfinally);
                 }
             }
-
-            sc.pop();
         }
         result = ss;
     }
@@ -4230,19 +4242,18 @@ void catchSemantic(Catch c, Scope* sc)
     sc.pop();
 }
 
-Statement semanticNoScope(Statement s, Scope* sc)
+Statement semanticNoScope(ref Statement s, Scope* sc)
 {
     //printf("Statement::semanticNoScope() %s\n", toChars());
     if (!s.isCompoundStatement() && !s.isScopeStatement())
     {
         s = new CompoundStatement(s.loc, s); // so scopeCode() gets called
     }
-    s = s.statementSemantic(sc);
-    return s;
+    return s.statementSemantic(sc);
 }
 
 // Same as semanticNoScope(), but do create a new scope
-Statement semanticScope(Statement s, Scope* sc, Statement sbreak, Statement scontinue)
+Statement semanticScope(ref Statement s, Scope* sc, Statement sbreak, Statement scontinue)
 {
     if (!s.sds)
     {
@@ -4254,9 +4265,11 @@ Statement semanticScope(Statement s, Scope* sc, Statement sbreak, Statement scon
         scd.sbreak = sbreak;
     if (scontinue)
         scd.scontinue = scontinue;
-    s = s.semanticNoScope(scd);
+    auto stmt = s.semanticNoScope(scd);
     scd.pop();
-    return s;
+    if (!stmt.isDeferStatement())
+        s = stmt;
+    return stmt;
 }
 
 
