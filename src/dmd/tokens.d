@@ -283,13 +283,14 @@ enum TOK : int
     interval = 231,
     voidExpression,
     cantExpression,
+    deferExpression,
 
     objcClassReference,
 
     max_,
 }
 
-alias TOKdefer = TOK.finally_; // FWDREF
+alias TOKdefer = TOK.finally_; // FWDREF FIXME replace by deferExpression
 
 // Assert that all token enum members have consecutive values and
 // that none of them overlap
@@ -695,6 +696,7 @@ extern (C++) struct Token
         TOK.interval: "interval",
         TOK.voidExpression: "voidexp",
         TOK.cantExpression: "cantexp",
+        TOK.deferExpression: "deferexp",
 
         TOK.objcClassReference: "class",
     ];
