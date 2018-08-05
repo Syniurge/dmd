@@ -1170,10 +1170,12 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
 
     Scope* sc;
     Expression result;
+    Expression* origExp;
 
-    this(Scope* sc)
+    this(Scope* sc, Expression* origExp)
     {
         this.sc = sc;
+        this.origExp = origExp;
     }
 
     private void setError()
@@ -7427,7 +7429,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
                 if (exp.op == TOK.construct) // https://issues.dlang.org/show_bug.cgi?id=10282
                                         // tweak mutability of e1 element
                     exp.e1.type = exp.e1.type.nextOf().mutableOf().arrayOf();
-                result = arrayOp(exp, sc);
+                assert(origExp); // FWDREF FIXME experimental hack
+                *origExp = arrayOp(exp, sc);
+                result = (*origExp).expressionSemantic(sc);
                 return;
             }
 
@@ -7510,7 +7514,9 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
             if ((tb1.isintegral() || tb1.isfloating()) && (tb2.isintegral() || tb2.isfloating()))
             {
                 exp.type = exp.e1.type;
-                result = arrayOp(exp, sc);
+                assert(origExp); // FWDREF FIXME experimental
+                *origExp = arrayOp(exp, sc);
+                result = (*origExp).expressionSemantic(sc);
                 return;
             }
         }
@@ -9520,9 +9526,16 @@ Expression binSemanticProp(BinExp e, Scope* sc)
 }
 
 // entrypoint for semantic ExpressionSemanticVisitor
+extern (C++) Expression expressionSemantic(ref Expression e, Scope* sc) // FWDREF experimental
+{
+    scope v = new ExpressionSemanticVisitor(sc, &e);
+    e.accept(v);
+    return v.result;
+}
+
 extern (C++) Expression expressionSemantic(Expression e, Scope* sc)
 {
-    scope v = new ExpressionSemanticVisitor(sc);
+    scope v = new ExpressionSemanticVisitor(sc, null);
     e.accept(v);
     return v.result;
 }

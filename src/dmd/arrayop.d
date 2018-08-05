@@ -142,7 +142,7 @@ extern (C++) Expression arrayOp(BinExp e, Scope* sc)
 
     auto ti = new TemplateInstance(e.loc, arrayOp, tiargs);
     ti.havetempdecl = false; // FWDREF HACK FIXME UGLY
-    return new CallExp(e.loc, new ScopeExp(e.loc, ti), args).expressionSemantic(sc);
+    return new CallExp(e.loc, new ScopeExp(e.loc, ti), args)/+.expressionSemantic(sc)+/;
 }
 
 /// ditto
