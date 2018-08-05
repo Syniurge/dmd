@@ -3917,6 +3917,8 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
             funcDeclarationSemantic(utd);
             sc2.pop();
         }
+        else
+            utd.semanticRun = PASS.semanticdone;
 
         version (none)
         {

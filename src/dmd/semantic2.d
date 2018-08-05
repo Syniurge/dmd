@@ -376,6 +376,16 @@ private extern(C++) final class Semantic2Visitor : Visitor
             return;
         assert(fd.semanticRun <= PASS.semantic2);
 
+        void defer()
+        {
+            Module.addDeferredSemantic2(fd);
+        }
+
+        if (fd.semanticRun < PASS.semanticdone)
+            fd.dsymbolSemantic(sc);
+        if (fd.semanticRun < PASS.semanticdone)
+            return defer();
+
         fd.semanticRun = PASS.semantic2;
 
         //printf("FuncDeclaration::semantic2 [%s] fd0 = %s %s\n", loc.toChars(), toChars(), type.toChars());

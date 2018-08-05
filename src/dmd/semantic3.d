@@ -221,6 +221,17 @@ private extern(C++) final class Semantic3Visitor : Visitor
         if (!sc)
             sc = funcdecl._scope;
 
+        void defer()
+        {
+            if (sc && !sc.intypeof && !funcdecl.isFuncLiteralDeclaration())
+                sc.instantiatingModule().addDeferredSemantic3(funcdecl);
+        }
+
+        if (funcdecl.semanticRun < PASS.semantic2done)
+            funcdecl.semantic2(sc);
+        if (funcdecl.semanticRun < PASS.semanticdone)
+            return defer();
+
         VarDeclaration _arguments = null;
 
         if (!funcdecl.parent)
@@ -610,10 +621,8 @@ private extern(C++) final class Semantic3Visitor : Visitor
                     funcdecl.bodyState = SemState.Defer; // FWDREF TODO semantic3 should disappear, and this should go into a new method called bodySemantic()
                     funcdecl.fsc.setNoFree();
                     funcdecl.fbodysc.setNoFree();
-                    if (!sc.intypeof && !funcdecl.isFuncLiteralDeclaration())
-                        sc.instantiatingModule().addDeferredSemantic3(funcdecl);
                     funcdecl.semanticRun = PASS.semantic2done; // FWDREF FIXME some code (e.g interpret(CallExp) still check whether semanticRun == semantic3 and erroneously consider that semantic3() is still going
-                    return;
+                    return defer();
                 }
                     funcdecl.bodyState = SemState.Done;
                 funcdecl.fbody = fnbody;
