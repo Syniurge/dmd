@@ -743,6 +743,8 @@ private Expression interpret(FuncDeclaration fd, InterState* istate, Expressions
     }
     if (!fd.functionSemantic3())
         return CTFEExp.cantexp;
+    if (fd.bodyState == SemState.Defer) // FWDREF TODO: test more bits? or is fd guaranteed to be past semantic1?
+        return DeferExp.deferexp;
     if (fd.semanticRun < PASS.semantic3done)
         return CTFEExp.cantexp;
 

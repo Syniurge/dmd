@@ -246,7 +246,7 @@ extern (C++) final class CTFEExp : Expression
 // True if 'e' is CTFEExp::cantexp, or an exception
 extern (C++) bool exceptionOrCantInterpret(Expression e)
 {
-    return e && (e.op == TOK.cantExpression || e.op == TOK.thrownException);
+    return e && (e.op == TOK.cantExpression || e.op == TOK.thrownException || e.op == TOKdefer);
 }
 
 /************** Aggregate literals (AA/string/array/struct) ******************/
