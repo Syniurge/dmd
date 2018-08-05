@@ -1006,46 +1006,33 @@ extern (C++) final class StaticForeachDeclaration : AttribDeclaration
         {
             return cache;
         }
-        sfe.prepare(_scope); // lower static foreach aggregate
+
+        includeState = SemState.In;
+
+        if (sfe.prepare(_scope ? _scope : sc)) // lower static foreach aggregate
+        {
+            includeState = SemState.Defer;
+            return null;
+        }
         if (!sfe.ready())
         {
-            return null; // TODO: ok?
+            assert(false); // FWDREF FIXME temporary assert since this should never happen?
+//             return null; // TODO: ok?
         }
 
         // expand static foreach
         import dmd.statementsem: makeTupleForeach;
         Dsymbols* d = makeTupleForeach!(true,true)(_scope, sfe.aggrfe, decl, sfe.needExpansion);
-        if (d) // process generated declarations
-        {
-            // Add members lazily.
-            for (size_t i = 0; i < d.dim; i++)
-            {
-                Dsymbol s = (*d)[i];
-                s.addMember(_scope, scopesym);
-            }
-        }
         cached = true;
+        includeState = SemState.Done; // FWDREF TODO remove cache & cached
         cache = d;
         return d;
-    }
-
-    override void addMember(Scope* sc, ScopeDsymbol sds)
-    {
-        addMemberState = SemState.Done; // FWDREF FIXME
-
-        // used only for caching the enclosing symbol
-        this.scopesym = sds;
     }
 
     override final void addComment(const(char)* comment)
     {
         // do nothing
         // change this to give semantics to documentation comments on static foreach declarations
-    }
-
-    override void importAll(Scope* sc)
-    {
-        // do not evaluate aggregate before semantic pass
     }
 
     override const(char)* kind() const

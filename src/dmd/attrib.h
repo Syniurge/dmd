@@ -188,9 +188,7 @@ public:
     Dsymbol *syntaxCopy(Dsymbol *s);
     bool oneMember(Dsymbol **ps, Identifier *ident);
     Dsymbols *include(Scope *sc);
-    void addMember(Scope *sc, ScopeDsymbol *sds);
     void addComment(const utf8_t *comment);
-    void importAll(Scope *sc);
     const char *kind() const;
     void accept(Visitor *v) { v->visit(this); }
 };

@@ -378,7 +378,7 @@ extern (C++) final class StaticForeach : RootObject
      * to finally expand the `static foreach` using
      * `dmd.statementsem.makeTupleForeach`.
      */
-    final extern(D) void prepare(Scope* sc)
+    final extern(D) bool prepare(Scope* sc)
     in
     {
         assert(sc);
@@ -388,19 +388,24 @@ extern (C++) final class StaticForeach : RootObject
         if (aggrfe)
         {
             sc = sc.startCTFE();
-            aggrfe.aggr = aggrfe.aggr.expressionSemantic(sc);
+            auto e = aggrfe.aggr.expressionSemantic(sc);
             sc = sc.endCTFE();
-            aggrfe.aggr = aggrfe.aggr.optimize(WANTvalue);
+            if (e.op == TOKdefer)
+                return true;
+            aggrfe.aggr = e.optimize(WANTvalue);
             auto tab = aggrfe.aggr.type.toBasetype();
             if (tab.ty != Ttuple)
             {
-                aggrfe.aggr = aggrfe.aggr.ctfeInterpret();
+                e = aggrfe.aggr.ctfeInterpret();
+                if (e.op == TOKdefer)
+                    return true;
+                aggrfe.aggr = e;
             }
         }
 
         if (aggrfe && aggrfe.aggr.type.toBasetype().ty == Terror)
         {
-            return;
+            return false;
         }
 
         if (!ready())
@@ -414,6 +419,8 @@ extern (C++) final class StaticForeach : RootObject
                 lowerNonArrayAggregate(sc);
             }
         }
+
+        return false;
     }
 
     /*****************************************
