@@ -231,6 +231,8 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
         if (type.ty == Terror)
             return false;   // failed already
         if (sizeok == Sizeok.done)
+            return true;    // succeeded // FWDREF FIXME obsolete
+        if (sizeState == SemState.Done)
             return true;    // succeeded
 
         if (!members)
@@ -239,8 +241,14 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
             return false;
         }
 
+        bool defer()
+        {
+            sizeState = SemState.Defer;
+            return false;
+        }
+
         if (_scope)
-            dsymbolSemantic(this, null);
+            dsymbolSemantic(this, null); // FWDREF FIXME it isn't necessary to call semantic on the members, among other things, on top of my head we only need symtabState à Done (plus précisément les includeState pour qu'AttribDeclaration.apply fonctionne correctement), et baseClassState à Done
 
         // Determine the instance size of base class first.
         if (auto cd = isClassDeclaration())
@@ -252,9 +260,14 @@ extern (C++) abstract class AggregateDeclaration : ScopeDsymbol
 
         // Determine instance fields when sizeok == Sizeok.none
         if (!determineFields())
+        {
+            if (fieldsState == SemState.Defer)
+                return defer();
             goto Lfail;
+        }
         if (sizeok != Sizeok.done)
             finalizeSize();
+        if (sizeok == Sizeok.done) sizeState = SemState.Done; // FWDREF FIXME should go into finalizeSize
 
         // this aggregate type has:
         if (type.ty == Terror)

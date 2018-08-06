@@ -677,12 +677,23 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         //printf("this = %p, parent = %p, '%s'\n", this, parent, parent.toChars());
         dsym.protection = sc.protection;
 
+        dsym.sizeState = SemState.In;
+
         /* If scope's alignment is the default, use the type's alignment,
          * otherwise the scope overrrides.
          */
         dsym.alignment = sc.alignment();
         if (dsym.alignment == STRUCTALIGN_DEFAULT)
+        {
             dsym.alignment = dsym.type.alignment(); // use type's alignment
+            if (dsym.type.hasDeferredSize())
+            {
+                dsym.sizeState = SemState.Defer;
+                return defer();
+            }
+        }
+
+        dsym.sizeState = SemState.Done;
 
         //printf("sc.stc = %x\n", sc.stc);
         //printf("storage_class = x%x\n", storage_class);

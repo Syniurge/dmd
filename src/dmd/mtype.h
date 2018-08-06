@@ -246,6 +246,7 @@ public:
     d_uns64 size();
     virtual d_uns64 size(const Loc &loc);
     virtual unsigned alignsize();
+    virtual bool hasDeferredSize();
     Type *trySemantic(const Loc &loc, Scope *sc);
     Type *merge2();
     void modToBuffer(OutBuffer *buf);

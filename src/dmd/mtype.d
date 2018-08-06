@@ -948,6 +948,11 @@ extern (C++) abstract class Type : RootObject
         return cast(uint)size(Loc.initial);
     }
 
+    bool hasDeferredSize()
+    {
+        return false;
+    }
+
     final Type trySemantic(const ref Loc loc, Scope* sc)
     {
         //printf("+trySemantic(%s) %d\n", toChars(), global.errors);
@@ -5929,6 +5934,11 @@ extern (C++) final class TypeStruct : Type
     {
         sym.size(Loc.initial); // give error for forward references
         return sym.alignsize;
+    }
+
+    override bool hasDeferredSize()
+    {
+        return sym.sizeState == SemState.Defer;
     }
 
     override Type syntaxCopy()
