@@ -265,6 +265,7 @@ public:
     Expression *edtor;          // if !=NULL, does the destruction of the variable
     IntRange *range;            // if !NULL, the variable is known to be within the range
 
+    void setScope(Scope *sc);
     Dsymbol *syntaxCopy(Dsymbol *);
     void setFieldOffset(AggregateDeclaration *ad, unsigned *poffset, bool isunion);
     const char *kind() const;

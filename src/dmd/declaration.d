@@ -1115,6 +1115,25 @@ extern (C++) class VarDeclaration : Declaration
         sequenceNumber = ++nextSequenceNumber;
     }
 
+    override void setScope(Scope *sc)
+    {
+        super.setScope(sc);
+
+        /* Pick up storage classes from context, but except synchronized,
+         * override, abstract, and final.
+         */
+        storage_class |= (sc.stc & ~(STC.synchronized_ | STC.override_ | STC.abstract_ | STC.final_));
+        if (storage_class & STC.extern_ && _init)
+            error("extern symbols cannot have initializers");
+
+        userAttribDecl = sc.userAttribDecl;
+
+        linkage = sc.linkage;
+        parent = sc.parent;
+        //printf("this = %p, parent = %p, '%s'\n", this, parent, parent.toChars());
+        protection = sc.protection;
+    }
+
     override Dsymbol syntaxCopy(Dsymbol s)
     {
         //printf("VarDeclaration::syntaxCopy(%s)\n", toChars());

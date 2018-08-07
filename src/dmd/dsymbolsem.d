@@ -587,18 +587,12 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         if (!sc)
             return;
 
+        if (!dsym._scope)
+            dsym.setScope(sc);
+
         dsym.semanticRun = PASS.semantic;
 
-        /* Pick up storage classes from context, but except synchronized,
-         * override, abstract, and final.
-         */
-        dsym.storage_class |= (sc.stc & ~(STC.synchronized_ | STC.override_ | STC.abstract_ | STC.final_));
-        if (dsym.storage_class & STC.extern_ && dsym._init)
-            dsym.error("extern symbols cannot have initializers");
-
-        dsym.userAttribDecl = sc.userAttribDecl;
-
-        AggregateDeclaration ad = dsym.isThis();
+        AggregateDeclaration ad = dsym.isThis(); // FWDREF TODO move to VarDeclaration.setScope()
         if (ad)
             dsym.storage_class |= ad.storage_class & STC.TYPECTOR;
 
@@ -669,13 +663,9 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
         //printf(" semantic type = %s\n", type ? type.toChars() : "null");
         if (dsym.type.ty == Terror)
             dsym.errors = true;
-        dsym.typeState = SemState.Done;
 
         dsym.type.checkDeprecated(dsym.loc, sc);
-        dsym.linkage = sc.linkage;
-        dsym.parent = sc.parent;
-        //printf("this = %p, parent = %p, '%s'\n", this, parent, parent.toChars());
-        dsym.protection = sc.protection;
+        dsym.typeState = SemState.Done;
 
         dsym.sizeState = SemState.In;
 
