@@ -1657,7 +1657,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
     override void visit(PragmaDeclaration pd)
     {
-        void defer() { assert(false); } // FWDREF FIXME
+        void defer()
+        {
+            Module.addDeferredSemantic(pd);
+             // FWDREF FIXME? this alters the order of pragma messages
+        }
 
         // Should be merged with PragmaStatement
         //printf("\tPragmaDeclaration::semantic '%s'\n", pd.toChars());
